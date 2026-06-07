@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from typing import Any
 from unittest.mock import patch
 
@@ -120,4 +121,27 @@ class TestCallClaudeCli:
         with patch("rag_integration.feature_groups.rag_pipeline.llm_response.claude_cli.subprocess.run") as mock_run:
             mock_run.return_value = mock_completed
             with pytest.raises(ValueError, match="claude -p failed"):
+                ClaudeCliResponse._call_claude_cli("test prompt", "", 1)
+
+    def test_missing_cli_raises(self) -> None:
+        """Should raise an actionable ValueError when the claude CLI is not installed."""
+        with patch("rag_integration.feature_groups.rag_pipeline.llm_response.claude_cli.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError(2, "No such file or directory", "claude")
+            with pytest.raises(ValueError, match="claude CLI not found"):
+                ClaudeCliResponse._call_claude_cli("test prompt", "", 1)
+
+    def test_timeout_raises(self) -> None:
+        """Should raise ValueError mentioning the timeout when the call times out."""
+        with patch("rag_integration.feature_groups.rag_pipeline.llm_response.claude_cli.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd="claude", timeout=5)
+            with pytest.raises(ValueError, match="timed out after 5s"):
+                ClaudeCliResponse._call_claude_cli("test prompt", "", 1, timeout=5)
+
+    def test_non_json_output_raises(self) -> None:
+        """Should raise ValueError when stdout is not valid JSON."""
+        mock_completed: Any = type("CompletedProcess", (), {"returncode": 0, "stdout": "not json", "stderr": ""})()
+
+        with patch("rag_integration.feature_groups.rag_pipeline.llm_response.claude_cli.subprocess.run") as mock_run:
+            mock_run.return_value = mock_completed
+            with pytest.raises(ValueError, match="non-JSON output"):
                 ClaudeCliResponse._call_claude_cli("test prompt", "", 1)

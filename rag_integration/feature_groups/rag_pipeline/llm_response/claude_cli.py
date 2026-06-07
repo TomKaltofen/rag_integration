@@ -111,17 +111,32 @@ class ClaudeCliResponse(BaseLLMResponse):
         """
         Run claude -p and return the result text.
 
-        Raises ValueError on non-zero exit code.
+        Raises ValueError with an actionable message when the CLI is not
+        installed, the call exceeds the timeout, the process exits non-zero,
+        or the output is not valid JSON.
         """
         cmd: List[str] = ["claude", "-p", "--output-format", "json", "--max-turns", str(max_turns)]
         if allowed_tools:
             cmd.extend(["--allowedTools", allowed_tools])
 
-        result = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout)  # nosec B603
+        try:
+            result = subprocess.run(  # nosec B603
+                cmd, input=prompt, capture_output=True, text=True, timeout=timeout
+            )
+        except FileNotFoundError as exc:
+            raise ValueError(
+                "claude CLI not found. Install the Claude CLI and ensure 'claude' is on your PATH."
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise ValueError(f"claude -p timed out after {timeout}s.") from exc
+
         if result.returncode != 0:
             raise ValueError(f"claude -p failed (exit {result.returncode}): {result.stderr}")
 
-        parsed: Dict[str, Any] = json.loads(result.stdout)
+        try:
+            parsed: Dict[str, Any] = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"claude -p returned non-JSON output: {result.stdout!r}") from exc
         return str(parsed.get("result", result.stdout))
 
     @classmethod
