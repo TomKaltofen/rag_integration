@@ -29,27 +29,22 @@ class FaissIVFIndexer(BaseVectorStore):
     NLIST = "nlist"
     NPROBE = "nprobe"
 
-    PROPERTY_MAPPING = {
-        BaseVectorStore.INDEX_METHOD: {
-            "ivf": "Approximate search using IndexIVFFlat",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseVectorStore.build_property_mapping(
+        "ivf",
+        "Approximate search using IndexIVFFlat",
+        extra={
+            NLIST: {
+                "explanation": "Number of clusters for IVF index",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 10,
+            },
+            NPROBE: {
+                "explanation": "Number of clusters to search at query time",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 3,
+            },
         },
-        NLIST: {
-            "explanation": "Number of clusters for IVF index",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 10,
-        },
-        NPROBE: {
-            "explanation": "Number of clusters to search at query time",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 3,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing embedding vectors to index",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _index_type_name(cls) -> str:

@@ -44,27 +44,22 @@ class CLIPImageEmbedder(BaseImageEmbedder):
 
     _model_cache: dict[str, Any] = {}
 
-    PROPERTY_MAPPING = {
-        BaseImageEmbedder.IMAGE_EMBEDDING_METHOD: {
-            "clip": "CLIP model image embeddings",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImageEmbedder.build_property_mapping(
+        "clip",
+        "CLIP model image embeddings",
+        extra={
+            BaseImageEmbedder.EMBEDDING_DIM: {
+                "explanation": "Dimension of the embedding vectors (CLIP default: 512)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 512,
+            },
+            BaseImageEmbedder.MODEL_NAME: {
+                "explanation": "Local path or HuggingFace model ID",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: _HF_MODEL_ID,
+            },
         },
-        BaseImageEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors (CLIP default: 512)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        BaseImageEmbedder.MODEL_NAME: {
-            "explanation": "Local path or HuggingFace model ID",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: _HF_MODEL_ID,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to embed",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _resolve_model_path(cls, model_name: str) -> str:

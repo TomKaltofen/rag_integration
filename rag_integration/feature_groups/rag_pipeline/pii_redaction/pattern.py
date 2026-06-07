@@ -6,7 +6,6 @@ import re
 from typing import Any, Dict, List, Pattern
 
 from mloda.user import Feature
-from mloda.provider import DefaultOptionKeys
 
 from rag_integration.feature_groups.rag_pipeline.pii_redaction.base import BasePIIRedactor
 
@@ -34,27 +33,7 @@ class PatternPIIRedactor(BasePIIRedactor):
         redaction_method="pattern"
     """
 
-    PROPERTY_MAPPING = {
-        BasePIIRedactor.REDACTION_METHOD: {
-            "pattern": "Custom pattern based detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BasePIIRedactor.PII_TYPES: {
-            "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, ALL)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: ["ALL"],
-        },
-        BasePIIRedactor.REPLACEMENT_STRATEGY: {
-            **BasePIIRedactor.REPLACEMENT_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "mask",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BasePIIRedactor.build_property_mapping("pattern", "Custom pattern based detection")
 
     # Default patterns (can be extended via options)
     DEFAULT_PATTERNS: Dict[str, str] = {

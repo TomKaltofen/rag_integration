@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 from mloda.user import Options
-from mloda.provider import DefaultOptionKeys
 
 from rag_integration.feature_groups.rag_pipeline.retrieval.base import BaseRetriever
 
@@ -31,30 +30,7 @@ class FaissRetriever(BaseRetriever):
         "faiss": "FAISS-based similarity search",
     }
 
-    PROPERTY_MAPPING = {
-        BaseRetriever.RETRIEVAL_METHOD: {
-            "faiss": "FAISS-based similarity search",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseRetriever.TOP_K: {
-            "explanation": "Number of results to return",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 5,
-        },
-        BaseRetriever.QUERY_TEXT: {
-            "explanation": "Raw text query to embed and search",
-            DefaultOptionKeys.context: True,
-        },
-        BaseRetriever.INDEX_PATH: {
-            "explanation": "Path to the FAISS index file",
-            DefaultOptionKeys.context: True,
-        },
-        BaseRetriever.METADATA_PATH: {
-            "explanation": "Path to the metadata JSON sidecar",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseRetriever.build_property_mapping("faiss", "FAISS-based similarity search")
 
     # Class-level cache for loaded index
     _cached_index: Optional[Any] = None

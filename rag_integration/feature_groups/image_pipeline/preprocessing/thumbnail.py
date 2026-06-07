@@ -24,22 +24,17 @@ class ThumbnailPreprocessor(BaseImagePreprocessor):
         preprocessing_method="thumbnail"
     """
 
-    PROPERTY_MAPPING = {
-        BaseImagePreprocessor.PREPROCESSING_METHOD: {
-            "thumbnail": "Generate thumbnail preserving aspect ratio",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImagePreprocessor.build_property_mapping(
+        "thumbnail",
+        "Generate thumbnail preserving aspect ratio",
+        extra={
+            BaseImagePreprocessor.TARGET_SIZE: {
+                "explanation": "Maximum size as [width, height] in pixels",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: [224, 224],
+            },
         },
-        BaseImagePreprocessor.TARGET_SIZE: {
-            "explanation": "Maximum size as [width, height] in pixels",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [224, 224],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to preprocess",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _preprocess_image(

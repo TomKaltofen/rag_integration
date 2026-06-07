@@ -26,27 +26,17 @@ class PixelPIIRedactor(BaseImagePIIRedactor):
 
     PIXEL_SIZE = "pixel_size"
 
-    PROPERTY_MAPPING = {
-        BaseImagePIIRedactor.IMAGE_REDACTION_METHOD: {
-            "pixel": "Pixelate PII regions",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImagePIIRedactor.build_property_mapping(
+        "pixel",
+        "Pixelate PII regions",
+        extra={
+            PIXEL_SIZE: {
+                "explanation": "Size of each pixel block in the mosaic effect",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 10,
+            },
         },
-        PIXEL_SIZE: {
-            "explanation": "Size of each pixel block in the mosaic effect",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 10,
-        },
-        BaseImagePIIRedactor.PII_REGIONS: {
-            "explanation": "List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _redact_region(

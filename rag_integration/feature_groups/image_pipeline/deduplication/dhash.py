@@ -28,27 +28,17 @@ class DifferenceHashImageDeduplicator(BaseImageDeduplicator):
         image_deduplication_method="dhash"
     """
 
-    PROPERTY_MAPPING = {
-        BaseImageDeduplicator.IMAGE_DEDUPLICATION_METHOD: {
-            "dhash": "Difference hash-based near-duplicate detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImageDeduplicator.build_property_mapping(
+        "dhash",
+        "Difference hash-based near-duplicate detection",
+        extra={
+            BaseImageDeduplicator.SIMILARITY_THRESHOLD: {
+                "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 0.9,
+            },
         },
-        BaseImageDeduplicator.SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 0.9,
-        },
-        BaseImageDeduplicator.KEEP_STRATEGY: {
-            **BaseImageDeduplicator.KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _compute_dhash(cls, image_data: bytes, hash_size: int = 8) -> int:

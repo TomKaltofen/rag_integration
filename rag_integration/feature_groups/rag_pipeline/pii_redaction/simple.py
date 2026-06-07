@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from typing import List, Set
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.pii_redaction.base import BasePIIRedactor
 
 
@@ -23,27 +21,7 @@ class SimplePIIRedactor(BasePIIRedactor):
         redaction_method="simple"
     """
 
-    PROPERTY_MAPPING = {
-        BasePIIRedactor.REDACTION_METHOD: {
-            "simple": "Simple word-list based detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BasePIIRedactor.PII_TYPES: {
-            "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, ALL)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: ["ALL"],
-        },
-        BasePIIRedactor.REPLACEMENT_STRATEGY: {
-            **BasePIIRedactor.REPLACEMENT_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "mask",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BasePIIRedactor.build_property_mapping("simple", "Simple word-list based detection")
 
     # Common first names (subset for demonstration)
     COMMON_FIRST_NAMES: Set[str] = {

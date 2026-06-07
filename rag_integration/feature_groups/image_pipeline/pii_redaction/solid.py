@@ -26,27 +26,17 @@ class SolidFillPIIRedactor(BaseImagePIIRedactor):
 
     FILL_COLOR = "fill_color"
 
-    PROPERTY_MAPPING = {
-        BaseImagePIIRedactor.IMAGE_REDACTION_METHOD: {
-            "solid": "Solid color fill over PII regions",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImagePIIRedactor.build_property_mapping(
+        "solid",
+        "Solid color fill over PII regions",
+        extra={
+            FILL_COLOR: {
+                "explanation": "RGB color tuple for solid fill (e.g., [0, 0, 0] for black)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: [0, 0, 0],
+            },
         },
-        FILL_COLOR: {
-            "explanation": "RGB color tuple for solid fill (e.g., [0, 0, 0] for black)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [0, 0, 0],
-        },
-        BaseImagePIIRedactor.PII_REGIONS: {
-            "explanation": "List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _redact_region(

@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from typing import List
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.chunking.base import BaseChunker
 
 
@@ -23,27 +21,7 @@ class SentenceChunker(BaseChunker):
         chunking_method="sentence"
     """
 
-    PROPERTY_MAPPING = {
-        BaseChunker.CHUNKING_METHOD: {
-            "sentence": "Sentence-boundary aware chunks",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseChunker.CHUNK_SIZE: {
-            "explanation": "Maximum size of each chunk (in characters)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        BaseChunker.CHUNK_OVERLAP: {
-            "explanation": "Overlap between consecutive chunks",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 50,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to chunk",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseChunker.build_property_mapping("sentence", "Sentence-boundary aware chunks")
 
     # Pattern to split on sentence boundaries
     SENTENCE_PATTERN = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")

@@ -5,8 +5,6 @@ from __future__ import annotations
 import hashlib
 from typing import Dict, List, Optional
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.image_pipeline.deduplication.base import BaseImageDeduplicator
 
 
@@ -21,27 +19,9 @@ class ExactHashImageDeduplicator(BaseImageDeduplicator):
         image_deduplication_method="exact_hash"
     """
 
-    PROPERTY_MAPPING = {
-        BaseImageDeduplicator.IMAGE_DEDUPLICATION_METHOD: {
-            "exact_hash": "MD5 hash-based exact duplicate detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseImageDeduplicator.SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1.0,
-        },
-        BaseImageDeduplicator.KEEP_STRATEGY: {
-            **BaseImageDeduplicator.KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseImageDeduplicator.build_property_mapping(
+        "exact_hash", "MD5 hash-based exact duplicate detection"
+    )
 
     @classmethod
     def _find_duplicates(

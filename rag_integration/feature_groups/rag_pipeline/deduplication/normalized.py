@@ -6,8 +6,6 @@ import hashlib
 import re
 from typing import Dict, List, Optional
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.deduplication.base import BaseDeduplicator
 
 
@@ -24,27 +22,7 @@ class NormalizedDeduplicator(BaseDeduplicator):
         deduplication_method="normalized"
     """
 
-    PROPERTY_MAPPING = {
-        BaseDeduplicator.DEDUPLICATION_METHOD: {
-            "normalized": "Normalized text hash-based detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseDeduplicator.SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering texts as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1.0,
-        },
-        BaseDeduplicator.KEEP_STRATEGY: {
-            **BaseDeduplicator.KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseDeduplicator.build_property_mapping("normalized", "Normalized text hash-based detection")
 
     @classmethod
     def _normalize_text(cls, text: str) -> str:

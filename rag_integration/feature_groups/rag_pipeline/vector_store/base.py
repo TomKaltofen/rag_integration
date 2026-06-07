@@ -13,10 +13,11 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 from rag_integration.feature_groups.rag_pipeline.vector_store.vector_store_artifact import VectorStoreArtifact
 
 
-class BaseVectorStore(FeatureChainParserMixin, FeatureGroup):
+class BaseVectorStore(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for vector store (indexing) feature groups.
 
@@ -46,16 +47,22 @@ class BaseVectorStore(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
+    _DISCRIMINATOR_KEY = INDEX_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
+        DefaultOptionKeys.in_features: {
+            "explanation": "Source feature containing embedding vectors to index",
+            DefaultOptionKeys.context: True,
+        },
+    }
+
     PROPERTY_MAPPING = {
         INDEX_METHOD: {
             **INDEX_METHODS,
             DefaultOptionKeys.context: True,
             DefaultOptionKeys.strict_validation: True,
         },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing embedding vectors to index",
-            DefaultOptionKeys.context: True,
-        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

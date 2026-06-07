@@ -36,32 +36,30 @@ class SemanticChunker(BaseChunker):
     SIMILARITY_THRESHOLD = "similarity_threshold"
     MODEL_NAME = "model_name"
 
-    PROPERTY_MAPPING = {
-        BaseChunker.CHUNKING_METHOD: {
-            "semantic": "Semantic boundary aware chunks using embeddings",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    # Semantic chunking ignores chunk_overlap (boundaries are semantic) and adds
+    # similarity/model options; the chunk_size explanation is a soft limit here.
+    PROPERTY_MAPPING = BaseChunker.build_property_mapping(
+        "semantic",
+        "Semantic boundary aware chunks using embeddings",
+        exclude={BaseChunker.CHUNK_OVERLAP},
+        extra={
+            BaseChunker.CHUNK_SIZE: {
+                "explanation": "Maximum size of each chunk (in characters, soft limit)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 512,
+            },
+            SIMILARITY_THRESHOLD: {
+                "explanation": "Cosine similarity threshold for grouping sentences (0.0-1.0)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 0.5,
+            },
+            MODEL_NAME: {
+                "explanation": "Sentence transformer model name",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: "all-MiniLM-L6-v2",
+            },
         },
-        BaseChunker.CHUNK_SIZE: {
-            "explanation": "Maximum size of each chunk (in characters, soft limit)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        SIMILARITY_THRESHOLD: {
-            "explanation": "Cosine similarity threshold for grouping sentences (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 0.5,
-        },
-        MODEL_NAME: {
-            "explanation": "Sentence transformer model name",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "all-MiniLM-L6-v2",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to chunk",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     _model: Optional[object] = None
     _model_name: Optional[str] = None

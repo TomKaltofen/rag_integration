@@ -5,8 +5,6 @@ from __future__ import annotations
 import hashlib
 from typing import Dict, List, Optional
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.deduplication.base import BaseDeduplicator
 
 
@@ -23,27 +21,7 @@ class ExactHashDeduplicator(BaseDeduplicator):
         deduplication_method="exact_hash"
     """
 
-    PROPERTY_MAPPING = {
-        BaseDeduplicator.DEDUPLICATION_METHOD: {
-            "exact_hash": "MD5 hash-based exact duplicate detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseDeduplicator.SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering texts as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1.0,
-        },
-        BaseDeduplicator.KEEP_STRATEGY: {
-            **BaseDeduplicator.KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseDeduplicator.build_property_mapping("exact_hash", "MD5 hash-based exact duplicate detection")
 
     @classmethod
     def _find_duplicates(

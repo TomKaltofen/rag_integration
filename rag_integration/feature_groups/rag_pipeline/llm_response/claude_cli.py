@@ -35,40 +35,27 @@ class ClaudeCliResponse(BaseLLMResponse):
         "claude_cli": "Claude CLI (claude -p) response generation",
     }
 
-    PROPERTY_MAPPING = {
-        BaseLLMResponse.LLM_METHOD: {
-            "claude_cli": "Claude CLI (claude -p) response generation",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseLLMResponse.build_property_mapping(
+        "claude_cli",
+        "Claude CLI (claude -p) response generation",
+        extra={
+            ALLOWED_TOOLS: {
+                "explanation": "Comma-separated tools to allow for Claude CLI",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: "",
+            },
+            MAX_TURNS: {
+                "explanation": "Maximum conversation turns for Claude CLI",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 1,
+            },
+            TIMEOUT: {
+                "explanation": "Subprocess timeout in seconds for Claude CLI",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 300,
+            },
         },
-        BaseLLMResponse.QUERY: {
-            "explanation": "The user question to answer",
-            DefaultOptionKeys.context: True,
-        },
-        BaseLLMResponse.CONTEXT: {
-            "explanation": "Retrieved context to include in the prompt (list or string)",
-            DefaultOptionKeys.context: True,
-        },
-        BaseLLMResponse.SYSTEM_PROMPT: {
-            "explanation": "System prompt for the LLM",
-            DefaultOptionKeys.context: True,
-        },
-        ALLOWED_TOOLS: {
-            "explanation": "Comma-separated tools to allow for Claude CLI",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "",
-        },
-        MAX_TURNS: {
-            "explanation": "Maximum conversation turns for Claude CLI",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1,
-        },
-        TIMEOUT: {
-            "explanation": "Subprocess timeout in seconds for Claude CLI",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 300,
-        },
-    }
+    )
 
     @classmethod
     def _get_allowed_tools(cls, options: Options) -> str:

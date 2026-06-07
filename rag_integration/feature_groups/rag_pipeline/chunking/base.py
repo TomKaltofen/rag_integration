@@ -13,8 +13,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BaseChunker(FeatureChainParserMixin, FeatureGroup):
+
+class BaseChunker(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for text chunking feature groups.
 
@@ -66,12 +68,9 @@ class BaseChunker(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
-    PROPERTY_MAPPING = {
-        CHUNKING_METHOD: {
-            **CHUNKING_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
+    _DISCRIMINATOR_KEY = CHUNKING_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         CHUNK_SIZE: {
             "explanation": "Maximum size of each chunk (in characters)",
             DefaultOptionKeys.context: True,
@@ -86,6 +85,15 @@ class BaseChunker(FeatureChainParserMixin, FeatureGroup):
             "explanation": "Source feature containing text to chunk",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        CHUNKING_METHOD: {
+            **CHUNKING_METHODS,
+            DefaultOptionKeys.context: True,
+            DefaultOptionKeys.strict_validation: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

@@ -13,8 +13,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
+
+class BasePIIRedactor(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for PII redaction feature groups.
 
@@ -98,12 +100,9 @@ class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
-    PROPERTY_MAPPING = {
-        REDACTION_METHOD: {
-            **REDACTION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
+    _DISCRIMINATOR_KEY = REDACTION_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         PII_TYPES: {
             "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, ALL)",
             DefaultOptionKeys.context: True,
@@ -118,6 +117,15 @@ class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
             "explanation": "Source feature containing text to redact",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        REDACTION_METHOD: {
+            **REDACTION_METHODS,
+            DefaultOptionKeys.context: True,
+            DefaultOptionKeys.strict_validation: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

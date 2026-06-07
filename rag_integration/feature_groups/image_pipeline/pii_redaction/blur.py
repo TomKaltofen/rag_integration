@@ -26,27 +26,17 @@ class BlurPIIRedactor(BaseImagePIIRedactor):
 
     BLUR_RADIUS = "blur_radius"
 
-    PROPERTY_MAPPING = {
-        BaseImagePIIRedactor.IMAGE_REDACTION_METHOD: {
-            "blur": "Gaussian blur over PII regions",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseImagePIIRedactor.build_property_mapping(
+        "blur",
+        "Gaussian blur over PII regions",
+        extra={
+            BLUR_RADIUS: {
+                "explanation": "Radius of the Gaussian blur effect",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 20,
+            },
         },
-        BLUR_RADIUS: {
-            "explanation": "Radius of the Gaussian blur effect",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 20,
-        },
-        BaseImagePIIRedactor.PII_REGIONS: {
-            "explanation": "List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _redact_region(

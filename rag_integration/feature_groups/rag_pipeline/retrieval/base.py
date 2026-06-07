@@ -14,8 +14,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BaseRetriever(FeatureGroup):
+
+class BaseRetriever(ConfigPropertyMappingMixin, FeatureGroup):
     """
     Base class for retrieval feature groups.
 
@@ -47,11 +49,9 @@ class BaseRetriever(FeatureGroup):
 
     RETRIEVAL_METHODS: Dict[str, str] = {}
 
-    PROPERTY_MAPPING = {
-        RETRIEVAL_METHOD: {
-            "explanation": "Which retriever implementation to use",
-            DefaultOptionKeys.context: True,
-        },
+    _DISCRIMINATOR_KEY = RETRIEVAL_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         TOP_K: {
             "explanation": "Number of results to return",
             DefaultOptionKeys.context: True,
@@ -69,6 +69,14 @@ class BaseRetriever(FeatureGroup):
             "explanation": "Path to the metadata JSON sidecar",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        RETRIEVAL_METHOD: {
+            "explanation": "Which retriever implementation to use",
+            DefaultOptionKeys.context: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

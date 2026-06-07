@@ -12,10 +12,12 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
+
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant. Answer the question using the provided context."
 
 
-class BaseLLMResponse(FeatureGroup):
+class BaseLLMResponse(ConfigPropertyMappingMixin, FeatureGroup):
     """
     Base class for LLM response feature groups.
 
@@ -38,11 +40,9 @@ class BaseLLMResponse(FeatureGroup):
 
     LLM_METHODS: Dict[str, str] = {}
 
-    PROPERTY_MAPPING = {
-        LLM_METHOD: {
-            "explanation": "Which LLM implementation to use",
-            DefaultOptionKeys.context: True,
-        },
+    _DISCRIMINATOR_KEY = LLM_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         QUERY: {
             "explanation": "The user question to answer",
             DefaultOptionKeys.context: True,
@@ -54,8 +54,15 @@ class BaseLLMResponse(FeatureGroup):
         SYSTEM_PROMPT: {
             "explanation": "System prompt for the LLM",
             DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: DEFAULT_SYSTEM_PROMPT,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        LLM_METHOD: {
+            "explanation": "Which LLM implementation to use",
+            DefaultOptionKeys.context: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

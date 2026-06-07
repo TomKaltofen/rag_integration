@@ -38,27 +38,22 @@ class SentenceTransformerEmbedder(BaseEmbedder):
     Note: Caches the model at class level for performance. Not thread-safe.
     """
 
-    PROPERTY_MAPPING = {
-        BaseEmbedder.EMBEDDING_METHOD: {
-            "sentence_transformer": "Sentence Transformer semantic embeddings",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseEmbedder.build_property_mapping(
+        "sentence_transformer",
+        "Sentence Transformer semantic embeddings",
+        extra={
+            BaseEmbedder.EMBEDDING_DIM: {
+                "explanation": "Dimension of embeddings (determined by model, this is informational)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 384,
+            },
+            BaseEmbedder.MODEL_NAME: {
+                "explanation": "Sentence transformer model name from Hugging Face",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: "all-MiniLM-L6-v2",
+            },
         },
-        BaseEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of embeddings (determined by model, this is informational)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 384,
-        },
-        BaseEmbedder.MODEL_NAME: {
-            "explanation": "Sentence transformer model name from Hugging Face",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "all-MiniLM-L6-v2",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to embed",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     # Default model for sentence transformers
     DEFAULT_MODEL = "all-MiniLM-L6-v2"

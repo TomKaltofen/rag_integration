@@ -13,8 +13,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
+
+class BaseEmbedder(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for text embedding feature groups.
 
@@ -64,12 +66,9 @@ class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
-    PROPERTY_MAPPING = {
-        EMBEDDING_METHOD: {
-            **EMBEDDING_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
+    _DISCRIMINATOR_KEY = EMBEDDING_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         EMBEDDING_DIM: {
             "explanation": "Dimension of the embedding vectors",
             DefaultOptionKeys.context: True,
@@ -84,6 +83,15 @@ class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
             "explanation": "Source feature containing text to embed",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        EMBEDDING_METHOD: {
+            **EMBEDDING_METHODS,
+            DefaultOptionKeys.context: True,
+            DefaultOptionKeys.strict_validation: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

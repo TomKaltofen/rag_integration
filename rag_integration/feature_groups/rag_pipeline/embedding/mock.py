@@ -6,8 +6,6 @@ import hashlib
 import math
 from typing import List
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.embedding.base import BaseEmbedder
 
 
@@ -24,27 +22,7 @@ class MockEmbedder(BaseEmbedder):
         embedding_method="mock"
     """
 
-    PROPERTY_MAPPING = {
-        BaseEmbedder.EMBEDDING_METHOD: {
-            "mock": "Deterministic mock embeddings for testing",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 384,
-        },
-        BaseEmbedder.MODEL_NAME: {
-            "explanation": "Name of the embedding model",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "default",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to embed",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseEmbedder.build_property_mapping("mock", "Deterministic mock embeddings for testing")
 
     @classmethod
     def _embed_texts(

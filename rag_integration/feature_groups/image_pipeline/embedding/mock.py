@@ -6,8 +6,6 @@ import hashlib
 import math
 from typing import List
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.image_pipeline.embedding.base import BaseImageEmbedder
 
 
@@ -24,27 +22,9 @@ class MockImageEmbedder(BaseImageEmbedder):
         image_embedding_method="mock"
     """
 
-    PROPERTY_MAPPING = {
-        BaseImageEmbedder.IMAGE_EMBEDDING_METHOD: {
-            "mock": "Deterministic mock image embeddings for testing",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseImageEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        BaseImageEmbedder.MODEL_NAME: {
-            "explanation": "Name of the embedding model",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "default",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to embed",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseImageEmbedder.build_property_mapping(
+        "mock", "Deterministic mock image embeddings for testing"
+    )
 
     @classmethod
     def _embed_image(

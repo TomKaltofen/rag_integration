@@ -13,8 +13,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
+
+class BaseImagePIIRedactor(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for image PII redaction feature groups.
 
@@ -77,12 +79,9 @@ class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
-    PROPERTY_MAPPING = {
-        IMAGE_REDACTION_METHOD: {
-            **REDACTION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
+    _DISCRIMINATOR_KEY = IMAGE_REDACTION_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         PII_REGIONS: {
             "explanation": "List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'",
             DefaultOptionKeys.context: True,
@@ -92,6 +91,15 @@ class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
             "explanation": "Source feature containing images to redact",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        IMAGE_REDACTION_METHOD: {
+            **REDACTION_METHODS,
+            DefaultOptionKeys.context: True,
+            DefaultOptionKeys.strict_validation: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

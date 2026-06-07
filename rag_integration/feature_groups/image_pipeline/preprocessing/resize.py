@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import List
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.image_pipeline.preprocessing.base import BaseImagePreprocessor
 
 
@@ -23,22 +21,7 @@ class ResizePreprocessor(BaseImagePreprocessor):
         preprocessing_method="resize"
     """
 
-    PROPERTY_MAPPING = {
-        BaseImagePreprocessor.PREPROCESSING_METHOD: {
-            "resize": "Resize images to target dimensions",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseImagePreprocessor.TARGET_SIZE: {
-            "explanation": "Target size as [width, height] in pixels",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [224, 224],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to preprocess",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseImagePreprocessor.build_property_mapping("resize", "Resize images to target dimensions")
 
     @classmethod
     def _preprocess_image(

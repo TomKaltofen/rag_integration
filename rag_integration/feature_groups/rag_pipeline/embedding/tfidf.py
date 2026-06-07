@@ -6,8 +6,6 @@ import math
 from collections import Counter
 from typing import Dict, List, Set
 
-from mloda.provider import DefaultOptionKeys
-
 from rag_integration.feature_groups.rag_pipeline.embedding.base import BaseEmbedder
 
 
@@ -24,27 +22,7 @@ class TfidfEmbedder(BaseEmbedder):
         embedding_method="tfidf"
     """
 
-    PROPERTY_MAPPING = {
-        BaseEmbedder.EMBEDDING_METHOD: {
-            "tfidf": "TF-IDF based embeddings",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 384,
-        },
-        BaseEmbedder.MODEL_NAME: {
-            "explanation": "Name of the embedding model",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "default",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to embed",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    PROPERTY_MAPPING = BaseEmbedder.build_property_mapping("tfidf", "TF-IDF based embeddings")
 
     @classmethod
     def _tokenize(cls, text: str) -> List[str]:

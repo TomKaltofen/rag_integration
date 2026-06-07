@@ -28,27 +28,22 @@ class FaissHNSWIndexer(BaseVectorStore):
     HNSW_M = "hnsw_m"
     HNSW_EF_CONSTRUCTION = "hnsw_ef_construction"
 
-    PROPERTY_MAPPING = {
-        BaseVectorStore.INDEX_METHOD: {
-            "hnsw": "Graph-based ANN using IndexHNSWFlat",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BaseVectorStore.build_property_mapping(
+        "hnsw",
+        "Graph-based ANN using IndexHNSWFlat",
+        extra={
+            HNSW_M: {
+                "explanation": "Number of connections per node in HNSW graph",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 32,
+            },
+            HNSW_EF_CONSTRUCTION: {
+                "explanation": "Construction quality parameter for HNSW",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: 40,
+            },
         },
-        HNSW_M: {
-            "explanation": "Number of connections per node in HNSW graph",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 32,
-        },
-        HNSW_EF_CONSTRUCTION: {
-            "explanation": "Construction quality parameter for HNSW",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 40,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing embedding vectors to index",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     @classmethod
     def _index_type_name(cls) -> str:

@@ -13,8 +13,10 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.property_mapping import ConfigPropertyMappingMixin
 
-class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
+
+class BaseImageDeduplicator(ConfigPropertyMappingMixin, FeatureChainParserMixin, FeatureGroup):
     """
     Base class for image deduplication feature groups.
 
@@ -72,12 +74,9 @@ class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
-    PROPERTY_MAPPING = {
-        IMAGE_DEDUPLICATION_METHOD: {
-            **DEDUPLICATION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
+    _DISCRIMINATOR_KEY = IMAGE_DEDUPLICATION_METHOD
+
+    _SHARED_PROPERTY_MAPPING = {
         SIMILARITY_THRESHOLD: {
             "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
             DefaultOptionKeys.context: True,
@@ -92,6 +91,15 @@ class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
             "explanation": "Source feature containing images to deduplicate",
             DefaultOptionKeys.context: True,
         },
+    }
+
+    PROPERTY_MAPPING = {
+        IMAGE_DEDUPLICATION_METHOD: {
+            **DEDUPLICATION_METHODS,
+            DefaultOptionKeys.context: True,
+            DefaultOptionKeys.strict_validation: True,
+        },
+        **_SHARED_PROPERTY_MAPPING,
     }
 
     @classmethod

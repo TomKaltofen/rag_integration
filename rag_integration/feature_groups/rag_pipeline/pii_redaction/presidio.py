@@ -33,27 +33,17 @@ class PresidioPIIRedactor(BasePIIRedactor):
     Note: Caches the analyzer at class level for performance. Not thread-safe.
     """
 
-    PROPERTY_MAPPING = {
-        BasePIIRedactor.REDACTION_METHOD: {
-            "presidio": "Microsoft Presidio-based PII detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
+    PROPERTY_MAPPING = BasePIIRedactor.build_property_mapping(
+        "presidio",
+        "Microsoft Presidio-based PII detection",
+        extra={
+            BasePIIRedactor.PII_TYPES: {
+                "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, CREDIT_CARD, IP_ADDRESS, ALL)",
+                DefaultOptionKeys.context: True,
+                DefaultOptionKeys.default: ["ALL"],
+            },
         },
-        BasePIIRedactor.PII_TYPES: {
-            "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, CREDIT_CARD, IP_ADDRESS, ALL)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: ["ALL"],
-        },
-        BasePIIRedactor.REPLACEMENT_STRATEGY: {
-            **BasePIIRedactor.REPLACEMENT_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "mask",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to redact",
-            DefaultOptionKeys.context: True,
-        },
-    }
+    )
 
     # Map our PII types to Presidio entity types
     PII_TYPE_MAPPING = {
