@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, List
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
-from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature, FeatureName, Options
-from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
-    PythonDictFramework,
-)
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.deduplication_base import BaseRowDeduplicator
 
-class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
+
+class BaseImageDeduplicator(BaseRowDeduplicator):
     """
     Base class for image deduplication feature groups.
 
@@ -67,6 +63,9 @@ class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
         "all_unique": "Mark duplicates but keep all rows",
     }
 
+    # Image deduplication keeps the largest file from each duplicate group.
+    KEEP_LARGEST_STRATEGY = "largest"
+
     PREFIX_PATTERN = r".*__deduped$"
 
     MIN_IN_FEATURES = 1
@@ -108,103 +107,12 @@ class BaseImageDeduplicator(FeatureChainParserMixin, FeatureGroup):
             return False
 
     @classmethod
-    def compute_framework_rule(cls) -> Optional[Set[Type[ComputeFramework]]]:
-        return {PythonDictFramework}
-
-    @classmethod
-    def _get_source_feature_name(cls, feature: Feature) -> str:
-        """Extract source feature name from the feature."""
-        source_features = cls._extract_source_features(feature)
-        return source_features[0]
-
-    @classmethod
-    def _get_similarity_threshold(cls, feature: Feature) -> float:
-        """Get similarity threshold from feature options."""
-        threshold = feature.options.get(cls.SIMILARITY_THRESHOLD)
-        return float(threshold) if threshold is not None else 1.0
-
-    @classmethod
-    def _get_keep_strategy(cls, feature: Feature) -> str:
-        """Get keep strategy from feature options."""
-        strategy = feature.options.get(cls.KEEP_STRATEGY)
-        return str(strategy) if strategy is not None else "first"
-
-    @classmethod
-    @abstractmethod
-    def _find_duplicates(
-        cls,
-        image_data_list: List[bytes],
-        threshold: float,
-    ) -> List[Optional[int]]:
-        """
-        Find duplicates in a list of images.
-
-        Args:
-            image_data_list: List of image bytes
-            threshold: Similarity threshold (0.0-1.0)
-
-        Returns:
-            List where each element is either None (not a duplicate) or
-            the index of the image it duplicates.
-        """
-        ...
-
-    @classmethod
-    def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
-        """Perform deduplication on images."""
-        for feature in features.features:
-            cls._get_source_feature_name(feature)
-            threshold = cls._get_similarity_threshold(feature)
-            keep_strategy = cls._get_keep_strategy(feature)
-            feature_name = feature.name
-
-            # Extract image data
-            image_data_list = []
-            for row in data:
-                image_data = row.get("image_data", b"")
-                if not isinstance(image_data, bytes):
-                    image_data = bytes(image_data) if image_data else b""
-                image_data_list.append(image_data)
-
-            # Find duplicates
-            duplicate_of = cls._find_duplicates(image_data_list, threshold)
-
-            # Add metadata and filter based on keep strategy
-            result = []
-            for i, row in enumerate(data):
-                new_row = row.copy()
-                new_row["is_duplicate"] = duplicate_of[i] is not None
-                new_row["duplicate_of"] = duplicate_of[i]
-                new_row[feature_name] = image_data_list[i]
-
-                if keep_strategy == "all_unique":
-                    result.append(new_row)
-                elif keep_strategy == "first" and duplicate_of[i] is None:
-                    result.append(new_row)
-                elif keep_strategy == "largest":
-                    result.append(new_row)
-
-            if keep_strategy == "largest":
-                result = cls._keep_largest(result)
-
-            return result
-
-        return data
-
-    @classmethod
-    def _keep_largest(cls, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Keep only the largest file in each duplicate group."""
-        groups: Dict[int, List[int]] = {}
-        for i, row in enumerate(data):
-            dup_of = row.get("duplicate_of")
-            key = dup_of if dup_of is not None else i
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(i)
-
-        keep_indices = set()
-        for indices in groups.values():
-            largest_idx = max(indices, key=lambda idx: len(data[idx].get("image_data", b"")))
-            keep_indices.add(largest_idx)
-
-        return [data[i] for i in sorted(keep_indices)]
+    def _extract_items(cls, data: List[Dict[str, Any]], feature: Feature) -> List[Any]:
+        """Extract image bytes from each row's 'image_data' field."""
+        items: List[Any] = []
+        for row in data:
+            image_data = row.get("image_data", b"")
+            if not isinstance(image_data, bytes):
+                image_data = bytes(image_data) if image_data else b""
+            items.append(image_data)
+        return items

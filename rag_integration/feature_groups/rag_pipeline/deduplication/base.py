@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, List
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
-from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature
-from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
-    PythonDictFramework,
-)
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.deduplication_base import BaseRowDeduplicator
 
-class BaseDeduplicator(FeatureChainParserMixin, FeatureGroup):
+
+class BaseDeduplicator(BaseRowDeduplicator):
     """
     Base class for deduplication feature groups.
 
@@ -95,107 +91,15 @@ class BaseDeduplicator(FeatureChainParserMixin, FeatureGroup):
     }
 
     @classmethod
-    def compute_framework_rule(cls) -> Optional[Set[Type[ComputeFramework]]]:
-        return {PythonDictFramework}
-
-    @classmethod
-    def _get_source_feature_name(cls, feature: Feature) -> str:
-        """Extract source feature name from the feature."""
-        source_features = cls._extract_source_features(feature)
-        return source_features[0]
-
-    @classmethod
-    def _get_similarity_threshold(cls, feature: Feature) -> float:
-        """Get similarity threshold from feature options."""
-        threshold = feature.options.get(cls.SIMILARITY_THRESHOLD)
-        return float(threshold) if threshold is not None else 1.0
-
-    @classmethod
-    def _get_keep_strategy(cls, feature: Feature) -> str:
-        """Get keep strategy from feature options."""
-        strategy = feature.options.get(cls.KEEP_STRATEGY)
-        return str(strategy) if strategy is not None else "first"
-
-    @classmethod
-    @abstractmethod
-    def _find_duplicates(
-        cls,
-        texts: List[str],
-        threshold: float,
-    ) -> List[Optional[int]]:
-        """
-        Find duplicates in a list of texts.
-
-        Args:
-            texts: List of text strings
-            threshold: Similarity threshold (0.0-1.0)
-
-        Returns:
-            List where each element is either None (not a duplicate) or
-            the index of the text it duplicates.
-        """
-        ...
-
-    @classmethod
-    def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
-        """Perform deduplication on the source feature."""
-        for feature in features.features:
-            source_feature = cls._get_source_feature_name(feature)
-            threshold = cls._get_similarity_threshold(feature)
-            keep_strategy = cls._get_keep_strategy(feature)
-            feature_name = feature.name
-
-            # Extract texts from source feature
-            texts = []
-            for row in data:
-                if source_feature in row:
-                    texts.append(str(row[source_feature]))
-                elif "text" in row:
-                    texts.append(str(row["text"]))
-                else:
-                    texts.append("")
-
-            # Find duplicates
-            duplicate_of = cls._find_duplicates(texts, threshold)
-
-            # Add metadata and filter based on keep strategy
-            result = []
-            for i, row in enumerate(data):
-                new_row = row.copy()
-                new_row["is_duplicate"] = duplicate_of[i] is not None
-                new_row["duplicate_of"] = duplicate_of[i]
-                new_row[feature_name] = texts[i]
-
-                if keep_strategy == "all_unique":
-                    result.append(new_row)
-                elif keep_strategy == "first" and duplicate_of[i] is None:
-                    result.append(new_row)
-                elif keep_strategy == "longest":
-                    result.append(new_row)
-
-            if keep_strategy == "longest":
-                result = cls._keep_longest(result, feature_name)
-
-            return result
-
-        return data
-
-    @classmethod
-    def _keep_longest(cls, data: List[Dict[str, Any]], feature_name: str) -> List[Dict[str, Any]]:
-        """Keep only the longest text in each duplicate group."""
-        # Group by duplicate relationship
-        groups: Dict[int, List[int]] = {}
-        for i, row in enumerate(data):
-            dup_of = row.get("duplicate_of")
-            key = dup_of if dup_of is not None else i
-            if key not in groups:
-                groups[key] = []
-            groups[key].append(i)
-
-        # Keep longest from each group
-        keep_indices = set()
-        for indices in groups.values():
-            longest_idx = max(indices, key=lambda i: len(str(data[i].get(feature_name, ""))))
-            keep_indices.add(longest_idx)
-
-        return [data[i] for i in sorted(keep_indices)]
+    def _extract_items(cls, data: List[Dict[str, Any]], feature: Feature) -> List[Any]:
+        """Extract text from each row's source feature, falling back to the 'text' field."""
+        source_feature = cls._get_source_feature_name(feature)
+        items: List[Any] = []
+        for row in data:
+            if source_feature in row:
+                items.append(str(row[source_feature]))
+            elif "text" in row:
+                items.append(str(row["text"]))
+            else:
+                items.append("")
+        return items
