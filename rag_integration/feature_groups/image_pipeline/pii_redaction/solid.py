@@ -60,7 +60,10 @@ class SolidFillPIIRedactor(BaseImagePIIRedactor):
         value = feature.options.get(cls.FILL_COLOR)
         if value is None:
             return cls.DEFAULT_FILL_COLOR
-        r, g, b = (int(c) for c in value)
+        channels = [int(c) for c in value]
+        if len(channels) != 3:
+            raise ValueError(f"{cls.FILL_COLOR} must be an RGB triple, got {len(channels)} value(s): {value!r}")
+        r, g, b = channels
         return (r, g, b)
 
     @classmethod

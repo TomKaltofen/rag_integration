@@ -54,8 +54,7 @@ def test_sentence_transformer_model_built_once() -> None:
         SentenceTransformerEmbedder,
     )
 
-    SentenceTransformerEmbedder._model = None
-    SentenceTransformerEmbedder._model_name = None
+    SentenceTransformerEmbedder._model_cache = None
     builder = _CountingBuilder()
     try:
         with pytest.MonkeyPatch.context() as mp:
@@ -64,16 +63,14 @@ def test_sentence_transformer_model_built_once() -> None:
         assert builder.calls == 1
         assert all(r is results[0] for r in results)
     finally:
-        SentenceTransformerEmbedder._model = None
-        SentenceTransformerEmbedder._model_name = None
+        SentenceTransformerEmbedder._model_cache = None
 
 
 def test_semantic_chunker_model_built_once() -> None:
     pytest.importorskip("sentence_transformers")
     from rag_integration.feature_groups.rag_pipeline.chunking.semantic import SemanticChunker
 
-    SemanticChunker._model = None
-    SemanticChunker._model_name = None
+    SemanticChunker._model_cache = None
     builder = _CountingBuilder()
     try:
         with pytest.MonkeyPatch.context() as mp:
@@ -82,8 +79,7 @@ def test_semantic_chunker_model_built_once() -> None:
         assert builder.calls == 1
         assert all(r is results[0] for r in results)
     finally:
-        SemanticChunker._model = None
-        SemanticChunker._model_name = None
+        SemanticChunker._model_cache = None
 
 
 def test_presidio_analyzer_built_once() -> None:
@@ -106,8 +102,7 @@ def test_faiss_index_loaded_once() -> None:
     faiss = pytest.importorskip("faiss")
     from rag_integration.feature_groups.rag_pipeline.retrieval.faiss_retriever import FaissRetriever
 
-    FaissRetriever._cached_index = None
-    FaissRetriever._cached_index_path = None
+    FaissRetriever._index_cache = None
     builder = _CountingBuilder()
     try:
         with pytest.MonkeyPatch.context() as mp:
@@ -116,5 +111,4 @@ def test_faiss_index_loaded_once() -> None:
         assert builder.calls == 1
         assert all(r is results[0] for r in results)
     finally:
-        FaissRetriever._cached_index = None
-        FaissRetriever._cached_index_path = None
+        FaissRetriever._index_cache = None

@@ -35,6 +35,11 @@ class TestFillColorOption:
         feature = Feature("image_docs__pii_redacted", options=Options(context={"fill_color": [255, 0, 0]}))
         assert SolidFillPIIRedactor._get_fill_color(feature) == (255, 0, 0)
 
+    def test_fill_color_wrong_length_raises(self) -> None:
+        feature = Feature("image_docs__pii_redacted", options=Options(context={"fill_color": [255, 0]}))
+        with pytest.raises(ValueError, match="RGB triple"):
+            SolidFillPIIRedactor._get_fill_color(feature)
+
     def test_redact_region_for_feature_threads_color(self) -> None:
         feature = Feature("image_docs__pii_redacted", options=Options(context={"fill_color": [255, 0, 0]}))
         with patch.object(SolidFillPIIRedactor, "_redact_region", return_value=b"out") as mock_redact:

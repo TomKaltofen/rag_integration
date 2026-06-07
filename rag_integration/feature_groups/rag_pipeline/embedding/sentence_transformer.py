@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from typing import TYPE_CHECKING, List, Optional, Type
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type
 
 if TYPE_CHECKING:
     from mloda.user import Feature
@@ -65,8 +65,10 @@ class SentenceTransformerEmbedder(BaseEmbedder):
     # Default model for sentence transformers
     DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
-    _model: Optional[object] = None
-    _model_name: Optional[str] = None
+    # Cached as a single (model_name, model) tuple so the lock-free fast path
+    # reads it atomically (one attribute load) instead of two fields that could
+    # be observed mid-update.
+    _model_cache: Optional[Tuple[str, object]] = None
     _model_lock = threading.Lock()
 
     @staticmethod
@@ -83,24 +85,28 @@ class SentenceTransformerEmbedder(BaseEmbedder):
     @classmethod
     def _get_model(cls, model_name: str) -> object:
         """Get or create the sentence transformer model (thread-safe)."""
-        # Fast path: model already cached for this name.
-        if cls._model is not None and cls._model_name == model_name:
-            return cls._model
+        # Fast path: single atomic read of the (name, model) cache.
+        cache = cls._model_cache
+        if cache is not None and cache[0] == model_name:
+            return cache[1]
 
         with cls._model_lock:
             # Re-check inside the lock: another thread may have built it.
-            if cls._model is None or cls._model_name != model_name:
-                try:
-                    from sentence_transformers import SentenceTransformer
-                except ImportError as e:
-                    raise ImportError(
-                        "sentence-transformers is required for SentenceTransformerEmbedder. "
-                        "Install with: pip install sentence-transformers"
-                    ) from e
+            cache = cls._model_cache
+            if cache is not None and cache[0] == model_name:
+                return cache[1]
 
-                cls._model = SentenceTransformer(model_name)
-                cls._model_name = model_name
-            return cls._model
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as e:
+                raise ImportError(
+                    "sentence-transformers is required for SentenceTransformerEmbedder. "
+                    "Install with: pip install sentence-transformers"
+                ) from e
+
+            model = SentenceTransformer(model_name)
+            cls._model_cache = (model_name, model)
+            return model
 
     @classmethod
     def _embed_texts(
