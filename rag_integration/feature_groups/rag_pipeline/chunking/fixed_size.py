@@ -70,7 +70,6 @@ class FixedSizeChunker(BaseChunker):
         # Ensure valid parameters
         chunk_size = max(1, chunk_size)
         chunk_overlap = max(0, min(chunk_overlap, chunk_size - 1))
-        step = chunk_size - chunk_overlap
 
         chunks = []
         start = 0
@@ -91,10 +90,16 @@ class FixedSizeChunker(BaseChunker):
 
             chunks.append(chunk.strip())
 
-            # Move to next chunk
+            # Stop once this chunk reached the end of the text
             if end >= text_len:
                 break
-            start = start + step
+
+            # Advance relative to the actual (possibly trimmed) end so the
+            # overlap between consecutive chunks stays at chunk_overlap. When
+            # no trim happened, end == start + chunk_size and this reduces to
+            # the plain step. max(..., start + 1) guarantees forward progress
+            # even if a trim left fewer than chunk_overlap new characters.
+            start = max(end - chunk_overlap, start + 1)
             if start >= text_len:
                 break
 
