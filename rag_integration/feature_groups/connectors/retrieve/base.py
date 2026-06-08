@@ -43,6 +43,14 @@ class BaseRetrieveConnector(FeatureGroup):
     a disjoint selector value and mloda raises when more than one feature group
     matches, at most one backend ever claims a given ``Options``. The base keeps
     ``RETRIEVE_BACKENDS`` empty so it never matches.
+
+    Reuse note for sibling families (rerank, generate, ...): the carry-over is
+    the *shape* (the ``RETRIEVE_BACKENDS`` selector dict, the
+    ``match_feature_group_criteria`` gating, and the ``_rank`` hoist), not this
+    class. The root/``DataCreator``/``_get_corpus`` triad below is
+    retrieve-specific: rerank consumes candidate passages as input features
+    rather than an inline corpus, so a sibling family copies this pattern, it
+    does not subclass ``BaseRetrieveConnector``.
     """
 
     ROOT_FEATURE_NAME = "retrieved_passages"
@@ -120,12 +128,28 @@ class BaseRetrieveConnector(FeatureGroup):
     def _rank(cls, query: str, texts: List[str], top_k: int) -> List[Tuple[int, float]]:
         """Rank ``texts`` against ``query``.
 
-        Returns at most ``top_k`` ``(corpus_index, score)`` pairs, best first,
-        where ``score`` is higher-is-more-relevant. ``top_k`` is already clamped
-        to ``1 <= top_k <= len(texts)``, so backends need not re-check it. The
-        base turns the indices/scores into the passage contract.
+        Returns up to ``top_k`` ``(corpus_index, score)`` pairs, ordered
+        best-first, where ``score`` is higher-is-more-relevant. Requirements the
+        base relies on and enforces (see :meth:`_retrieve`): indices are
+        in range (``0 <= corpus_index < len(texts)``) and unique. ``top_k`` is
+        already clamped to ``1 <= top_k <= len(texts)``, so backends need not
+        re-check it; most backends return exactly ``top_k`` pairs. The base does
+        not re-sort, so returning best-first is a hard requirement.
         """
         ...
+
+    @classmethod
+    def _validate_ranking(cls, ranked: List[Tuple[int, float]], corpus_size: int) -> None:
+        """Reject out-of-range or duplicate indices from a backend's ``_rank``."""
+        seen: Set[int] = set()
+        for corpus_idx, _score in ranked:
+            if not 0 <= corpus_idx < corpus_size:
+                raise ValueError(
+                    f"{cls.__name__}._rank returned out-of-range index {corpus_idx} for a corpus of size {corpus_size}."
+                )
+            if corpus_idx in seen:
+                raise ValueError(f"{cls.__name__}._rank returned duplicate index {corpus_idx}.")
+            seen.add(corpus_idx)
 
     @classmethod
     def _retrieve(
@@ -139,7 +163,10 @@ class BaseRetrieveConnector(FeatureGroup):
         Owns the cross-backend invariants: empty corpus and non-positive
         ``top_k`` return ``[]``; ``top_k`` is clamped to the corpus size;
         ``doc_id``/``text`` are read from the corpus; ``rank`` is assigned
-        0-based ascending; ``score`` is coerced to ``float``.
+        0-based ascending; ``score`` is coerced to ``float``. The indices a
+        backend returns are validated to be in range and unique, so a buggy
+        ``_rank`` fails loudly here (for any input) instead of silently
+        dropping or duplicating a passage.
         """
         if not corpus:
             return []
@@ -151,6 +178,7 @@ class BaseRetrieveConnector(FeatureGroup):
         doc_ids = [str(doc.get("doc_id", str(i))) for i, doc in enumerate(corpus)]
 
         ranked = cls._rank(query, texts, effective_k)
+        cls._validate_ranking(ranked, len(corpus))
 
         passages: List[Dict[str, Any]] = []
         for rank, (corpus_idx, score) in enumerate(ranked):

@@ -147,12 +147,29 @@ class RetrieveConnectorContractBase(ABC):
         assert passages[0]["score"] > passages[1]["score"]
 
     def test_passage_text_matches_corpus(self) -> None:
-        """Each returned passage's text is the corpus text for its doc_id."""
+        """Guards the base assembly: each passage's text is the corpus text for
+        its doc_id (catches a doc_id<->text pairing regression in the base, not
+        a wrong-index backend, which ``test_relevant_doc_ranked_first`` covers)."""
         corpus = self.sample_corpus()
         text_by_doc_id = {str(doc["doc_id"]): str(doc["text"]) for doc in corpus}
         passages = self._retrieve(self.sample_query(), corpus, top_k=len(corpus))
         for passage in passages:
             assert passage["text"] == text_by_doc_id[passage["doc_id"]]
+
+    def test_doc_ids_unique_and_cover_corpus(self) -> None:
+        """No silent drop or duplicate: with ``top_k >= corpus size`` the
+        returned doc_ids are unique and cover exactly the corpus.
+
+        A backend that drops or duplicates a doc (e.g. returns ``[(2,..),(2,..),
+        (0,..)]``) passes ranking/score/mapping checks but fails here. This is
+        the assertion that keeps the silent-corruption class out of every
+        sibling family that copies this suite.
+        """
+        corpus = self.sample_corpus()
+        passages = self._retrieve(self.sample_query(), corpus, top_k=len(corpus))
+        returned = [p["doc_id"] for p in passages]
+        assert len(returned) == len(set(returned)), "ranking returned duplicate doc_ids"
+        assert set(returned) == {str(doc["doc_id"]) for doc in corpus}
 
     def test_top_k_respected(self) -> None:
         passages = self._retrieve(self.sample_query(), self.sample_corpus(), top_k=1)

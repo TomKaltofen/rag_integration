@@ -41,6 +41,11 @@ class Bm25sRetriever(BaseRetrieveConnector):
         import bm25s
 
         corpus_tokens = bm25s.tokenize(texts, stopwords="en", show_progress=False)
+        # Degenerate corpus (e.g. every doc is only stopwords) tokenizes to an
+        # empty vocabulary; bm25s would raise on retrieve. Nothing is rankable.
+        if len(corpus_tokens.vocab) == 0:
+            return []
+
         retriever = bm25s.BM25()
         retriever.index(corpus_tokens, show_progress=False)
 
