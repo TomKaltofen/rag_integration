@@ -121,6 +121,47 @@ feature = Feature(
 | Deduplication   | `ExactHashImageDeduplicator`, `PerceptualHashImageDeduplicator`, `DifferenceHashImageDeduplicator`   |
 | Embedding       | `MockImageEmbedder`, `HashImageEmbedder`, `CLIPImageEmbedder`                                        |
 
+## Connector families
+
+Alongside the build-your-own stage pipeline, the `connectors/` package wraps
+whole external open-source RAG tools under one mloda surface, organized into
+families by query-contract shape (see issue #25 for the taxonomy and the
+backend-selection rationale). Each family is a thin `Base<Family>Connector`
+FeatureGroup plus one or more concrete backends, with an inheritable
+contract-test suite so a new backend's test is a handful of adapter methods.
+
+The first family is `retrieve` (`query_text + corpus + top_k -> ranked
+passages`). Its canonical backend is `Bm25sRetriever` (BM25 lexical retrieval
+via `bm25s`): zero-download, deterministic, MIT/numpy-only.
+
+```python
+from mloda.user import mlodaAPI, Feature, Options, PluginCollector
+from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
+    PythonDictFramework,
+)
+from rag_integration.feature_groups.connectors.retrieve import Bm25sRetriever
+
+feature = Feature(
+    "retrieved_passages",
+    options=Options(context={
+        "retrieve_backend": "bm25s",
+        "query_text": "cat pet",
+        "corpus": [
+            {"doc_id": "d1", "text": "A cat is an independent and curious pet."},
+            {"doc_id": "d2", "text": "Cars need regular engine oil and maintenance."},
+        ],
+        "top_k": 3,
+    }),
+)
+results = mlodaAPI.run_all(
+    [feature],
+    compute_frameworks={PythonDictFramework},
+    plugin_collector=PluginCollector.enabled_feature_groups({Bm25sRetriever}),
+)
+```
+
+Install the family's backend with `uv sync --extra connectors`.
+
 ## Installation
 
 Clone the repository and install with uv:
