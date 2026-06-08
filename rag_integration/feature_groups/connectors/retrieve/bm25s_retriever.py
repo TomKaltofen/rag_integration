@@ -7,9 +7,7 @@ ranked indices with scores directly). MIT-licensed, numpy-only.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
-from mloda.provider import DefaultOptionKeys
+from typing import List, Tuple
 
 from rag_integration.feature_groups.connectors.retrieve.base import BaseRetrieveConnector
 
@@ -26,62 +24,30 @@ class Bm25sRetriever(BaseRetrieveConnector):
         "bm25s": "BM25 lexical retrieval (bm25s)",
     }
 
+    # Declarative option documentation; selection is via
+    # ``match_feature_group_criteria`` (see BaseRetrieveConnector). The allowed
+    # backend value is the single key of RETRIEVE_BACKENDS above.
     PROPERTY_MAPPING = {
-        BaseRetrieveConnector.RETRIEVE_BACKEND: {
-            **RETRIEVE_BACKENDS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseRetrieveConnector.QUERY_TEXT: {
-            "explanation": "Raw text query to search the corpus",
-            DefaultOptionKeys.context: True,
-        },
+        BaseRetrieveConnector.RETRIEVE_BACKEND: {"explanation": "Use 'bm25s' for BM25 lexical retrieval"},
+        BaseRetrieveConnector.QUERY_TEXT: {"explanation": "Raw text query to search the corpus"},
         BaseRetrieveConnector.TOP_K: {
-            "explanation": "Number of passages to return",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: BaseRetrieveConnector.DEFAULT_TOP_K,
+            "explanation": f"Number of passages to return (default {BaseRetrieveConnector.DEFAULT_TOP_K})"
         },
-        BaseRetrieveConnector.CORPUS: {
-            "explanation": "Inline corpus: a list of {doc_id, text} dicts",
-            DefaultOptionKeys.context: True,
-        },
+        BaseRetrieveConnector.CORPUS: {"explanation": "Inline corpus: a list of {doc_id, text} dicts"},
     }
 
     @classmethod
-    def _retrieve(
-        cls,
-        query: str,
-        corpus: List[Dict[str, Any]],
-        top_k: int,
-    ) -> List[Dict[str, Any]]:
+    def _rank(cls, query: str, texts: List[str], top_k: int) -> List[Tuple[int, float]]:
         import bm25s
-
-        if not corpus:
-            return []
-
-        effective_k = min(top_k, len(corpus))
-        if effective_k <= 0:
-            return []
-
-        texts = [str(doc.get("text", "")) for doc in corpus]
-        doc_ids = [str(doc.get("doc_id", str(i))) for i, doc in enumerate(corpus)]
 
         corpus_tokens = bm25s.tokenize(texts, stopwords="en", show_progress=False)
         retriever = bm25s.BM25()
         retriever.index(corpus_tokens, show_progress=False)
 
         query_tokens = bm25s.tokenize([query], stopwords="en", show_progress=False)
-        indices, scores = retriever.retrieve(query_tokens, k=effective_k, show_progress=False)
+        # index() is called WITHOUT a corpus, so retrieve() returns integer
+        # corpus indices (not document objects); keep it that way so the int()
+        # cast below stays valid.
+        indices, scores = retriever.retrieve(query_tokens, k=top_k, show_progress=False)
 
-        passages: List[Dict[str, Any]] = []
-        for rank in range(effective_k):
-            corpus_idx = int(indices[0][rank])
-            passages.append(
-                {
-                    "doc_id": doc_ids[corpus_idx],
-                    "text": texts[corpus_idx],
-                    "score": float(scores[0][rank]),
-                    "rank": rank,
-                }
-            )
-        return passages
+        return [(int(indices[0][rank]), float(scores[0][rank])) for rank in range(top_k)]

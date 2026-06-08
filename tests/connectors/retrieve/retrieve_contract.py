@@ -134,13 +134,30 @@ class RetrieveConnectorContractBase(ABC):
         assert scores == sorted(scores, reverse=True)
 
     def test_relevant_doc_ranked_first(self) -> None:
-        """Not-a-stub proof: the crafted relevant doc must rank #1."""
+        """Not-a-stub proof: the crafted relevant doc must rank #1, by a margin.
+
+        The strict ``score`` separation rules out a backend that ignores the
+        query and happens to return the corpus in an order (e.g. alphabetical)
+        that puts the expected doc first, and a backend that returns all-equal
+        scores.
+        """
         passages = self._retrieve(self.sample_query(), self.sample_corpus(), top_k=len(self.sample_corpus()))
         assert passages[0]["doc_id"] == self.expected_top_doc_id()
+        assert len(passages) >= 2, "contract corpus must have >=2 docs to prove score separation"
+        assert passages[0]["score"] > passages[1]["score"]
+
+    def test_passage_text_matches_corpus(self) -> None:
+        """Each returned passage's text is the corpus text for its doc_id."""
+        corpus = self.sample_corpus()
+        text_by_doc_id = {str(doc["doc_id"]): str(doc["text"]) for doc in corpus}
+        passages = self._retrieve(self.sample_query(), corpus, top_k=len(corpus))
+        for passage in passages:
+            assert passage["text"] == text_by_doc_id[passage["doc_id"]]
 
     def test_top_k_respected(self) -> None:
         passages = self._retrieve(self.sample_query(), self.sample_corpus(), top_k=1)
         assert len(passages) == 1
+        assert passages[0]["doc_id"] == self.expected_top_doc_id()
 
     def test_top_k_clamped_to_corpus(self) -> None:
         corpus = self.sample_corpus()
