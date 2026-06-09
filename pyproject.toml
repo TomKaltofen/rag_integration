@@ -54,7 +54,7 @@ graph = [
 # structured family: sqlglot (MIT, pure-Python, zero-download) parses/validates
 # the generated SQL; execution is on the stdlib sqlite3 module.
 structured = [
-    "sqlglot>=20",
+    "sqlglot>=25",
 ]
 
 [tool.setuptools.packages.find]

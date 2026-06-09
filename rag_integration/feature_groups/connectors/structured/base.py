@@ -101,7 +101,7 @@ class BaseStructuredConnector(FeatureGroup):
 
         Identifiers cannot be parameterised, so this whitelist is what keeps the
         generated SQL injection-safe (values, by contrast, are always bound)."""
-        if not _IDENT_RE.match(name):
+        if not _IDENT_RE.fullmatch(name):
             raise ValueError(f"{cls.__name__}: invalid {kind} identifier {name!r}; expected a simple SQL identifier.")
         return name
 
@@ -122,8 +122,12 @@ class BaseStructuredConnector(FeatureGroup):
     def _validate_select(cls, sql: str) -> None:
         import sqlglot
         import sqlglot.expressions as exp
+        from sqlglot.errors import ParseError
 
-        parsed = sqlglot.parse_one(sql, read="sqlite")
+        try:
+            parsed = sqlglot.parse_one(sql, read="sqlite")
+        except ParseError as error:
+            raise ValueError(f"{cls.__name__}._to_sql produced unparseable SQL: {sql!r}") from error
         if not isinstance(parsed, exp.Select):
             raise ValueError(f"{cls.__name__}._to_sql produced a non-SELECT statement, which is not allowed: {sql!r}")
 
@@ -138,6 +142,10 @@ class BaseStructuredConnector(FeatureGroup):
         """Translate, validate, and execute the query over an in-memory SQLite table."""
         table = cls._validate_identifier(table, "table")
         columns = [cls._validate_identifier(c, "column") for c in columns]
+        if not columns:
+            raise ValueError(f"{cls.__name__}: at least one column is required.")
+        if len(set(columns)) != len(columns):
+            raise ValueError(f"{cls.__name__}: duplicate column names are not allowed: {columns}.")
 
         sql, params = cls._to_sql(question, table, columns)
         cls._validate_select(sql)
