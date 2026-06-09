@@ -180,7 +180,10 @@ The `graph_rag` family (`query_text + nodes + edges + top_k -> ranked passages`)
 retrieves over a graph: a passage connected to a relevant one is surfaced even
 with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
 (`graph_backend="networkx"`, `uv sync --extra graph`): zero-download,
-deterministic, BSD/pure-Python.
+deterministic, BSD/pure-Python. A second backend, `AdjacencyGraphRag`
+(`graph_backend="adjacency"`), applies the same overlap + neighbour-bonus
+scoring over a hand-built adjacency map with no networkx (stdlib only),
+demonstrating that the family contract is not tied to one graph library.
 
 ## Installation
 
