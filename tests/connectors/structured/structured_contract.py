@@ -158,6 +158,13 @@ class StructuredConnectorContractBase(ABC):
         with pytest.raises(ValueError):
             connector._validate_identifier("a; DROP TABLE x", "column")
 
+    def test_query_rejects_bad_table_identifier_end_to_end(self) -> None:
+        """Safety through the production path: a malicious table name is rejected
+        by ``_query`` itself, not only by the isolated validator."""
+        connector = self.connector_class()
+        with pytest.raises(ValueError):
+            connector._query("anything", "pets; DROP TABLE pets", self.columns(), self.rows())
+
     def test_idempotent(self) -> None:
         first = self._query(self.filter_question())
         second = self._query(self.filter_question())
