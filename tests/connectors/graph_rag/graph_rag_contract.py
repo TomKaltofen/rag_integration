@@ -164,13 +164,22 @@ class GraphRagConnectorContractBase(ABC):
 
     def test_connected_context_retrieved(self) -> None:
         """Graph not-a-stub proof: a zero-overlap node neighbouring the relevant
-        node is retrieved (at top_k=2), while an isolated zero-overlap node is not.
-        A plain lexical retriever could not surface the connected node."""
-        passages = self._passages(self.sample_query(), self.sample_nodes(), self.sample_edges(), top_k=2)
-        doc_ids = [p["doc_id"] for p in passages]
-        assert self.expected_top_doc_id() in doc_ids
-        assert self.expected_connected_doc_id() in doc_ids
-        assert self.expected_isolated_doc_id() not in doc_ids
+        node must *outscore* an equally non-overlapping isolated node, purely
+        because of the edge. A lexical-only backend gives the two equal scores
+        and fails this regardless of how it breaks ties.
+
+        The score comparison is the load-bearing assertion (tie-break
+        independent); the top_k=2 membership check then confirms the connected
+        node is actually surfaced and the isolated one dropped."""
+        nodes = self.sample_nodes()
+        full = self._passages(self.sample_query(), nodes, self.sample_edges(), top_k=len(nodes))
+        score = {p["doc_id"]: p["score"] for p in full}
+        assert score[self.expected_connected_doc_id()] > score[self.expected_isolated_doc_id()]
+
+        top2 = [p["doc_id"] for p in self._passages(self.sample_query(), nodes, self.sample_edges(), top_k=2)]
+        assert self.expected_top_doc_id() in top2
+        assert self.expected_connected_doc_id() in top2
+        assert self.expected_isolated_doc_id() not in top2
 
     def test_passage_text_matches_nodes(self) -> None:
         nodes = self.sample_nodes()

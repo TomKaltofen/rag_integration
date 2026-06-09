@@ -114,7 +114,9 @@ class BaseGraphRagConnector(FeatureGroup):
             return []
         resolved: List[Tuple[int, int]] = []
         for edge in raw_edges:
-            if len(edge) != 2:
+            # A real pair only: a length-2 string would otherwise fabricate an
+            # edge between its two characters, and a non-sequence would crash len().
+            if not isinstance(edge, (list, tuple)) or len(edge) != 2:
                 continue
             a, b = str(edge[0]), str(edge[1])
             if a in doc_id_to_index and b in doc_id_to_index and a != b:
