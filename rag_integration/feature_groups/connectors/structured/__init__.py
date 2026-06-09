@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
+from rag_integration.feature_groups.connectors.structured.aggregate_sql import AggregateSql
 from rag_integration.feature_groups.connectors.structured.base import BaseStructuredConnector
 from rag_integration.feature_groups.connectors.structured.rule_based_sql import RuleBasedSql
 
-__all__ = ["BaseStructuredConnector", "RuleBasedSql"]
+__all__ = ["BaseStructuredConnector", "RuleBasedSql", "AggregateSql"]

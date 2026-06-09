@@ -187,7 +187,11 @@ natural-language question over a relational table. Its canonical backend is
 `RuleBasedSql` (`structured_backend="rule_based"`, `uv sync --extra structured`):
 rule-based NL->SQL executed on stdlib `sqlite3`, with `sqlglot` validating the
 generated SQL is a read-only `SELECT`. Zero-download, deterministic, no LLM;
-values are always bound parameters and identifiers are whitelisted.
+values are always bound parameters and identifiers are whitelisted. A second
+backend, `AggregateSql` (`structured_backend="aggregate"`), adds aggregation
+intents (avg/min/max/sum over a numeric column named in the question) on top of
+the count/filter/list intents, reusing the same identifier whitelist, SQL guard,
+and sqlite execution.
 
 ## Installation
 
