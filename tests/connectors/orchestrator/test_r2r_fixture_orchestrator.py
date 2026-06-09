@@ -77,6 +77,20 @@ class TestR2RFixtureOrchestrator(OrchestratorConnectorContractBase):
         assert result["documents"], "surviving canned docs should still be surfaced (retrieve-only)"
         assert result["answer"] == "", "answer must be dropped when its supporting doc is narrowed away"
 
+    def test_answer_dropped_when_supporting_doc_truncated_by_top_k(self) -> None:
+        """The 'loyal companion' canned response ranks ``d1`` above the answer's
+        source ``d2``, so ``top_k=1`` truncates ``d2`` away: the answer is
+        suppressed (retrieve-only) even though ``d2`` is in the corpus, because
+        suppression keys on the SURFACED documents, not corpus membership."""
+        corpus = self.sample_corpus()
+        full = self._answer("loyal companion", corpus, top_k=len(corpus))
+        assert full["documents"][0]["doc_id"] == "d1"
+        assert "loyal" in full["answer"], "sanity: answer surfaces when its source doc is surfaced"
+
+        truncated = self._answer("loyal companion", corpus, top_k=1)
+        assert [document["doc_id"] for document in truncated["documents"]] == ["d1"]
+        assert truncated["answer"] == "", "answer must be dropped when top_k truncation removes its source doc"
+
     def test_unknown_query_has_no_canned_response(self) -> None:
         """A query absent from the fixture yields an empty result (the server has
         nothing indexed for it), never a fabricated answer."""

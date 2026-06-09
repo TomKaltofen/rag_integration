@@ -4,11 +4,14 @@ Canonical concrete for the ``orchestrator`` family: runs a real Haystack 2.x
 pipeline (``InMemoryDocumentStore`` + ``InMemoryBM25Retriever``) entirely
 in-memory. Zero-download (BM25 needs no model and no API) and deterministic, so
 it anchors the CI contract suite while exercising a genuine external framework.
-Behind the ``orchestrator`` extra.
+Behind the ``orchestrator`` extra. Haystack telemetry is disabled (via
+``HAYSTACK_TELEMETRY_ENABLED``, set before the lazy import) to keep runs
+offline and deterministic.
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Tuple
 
 from rag_integration.feature_groups.connectors.orchestrator.base import BaseOrchestratorConnector
@@ -37,18 +40,16 @@ class HaystackOrchestrator(BaseOrchestratorConnector):
 
     @classmethod
     def _run(cls, query: str, corpus: List[Dict[str, Any]], top_k: int) -> Tuple[str, List[Dict[str, Any]]]:
+        # Haystack evaluates telemetry at first import (and Pipeline.run() would
+        # otherwise POST a PostHog event and write ~/.haystack/config.yaml), so
+        # opt out before the lazy import to keep runs offline and deterministic.
+        os.environ.setdefault("HAYSTACK_TELEMETRY_ENABLED", "False")
+
         from haystack import Document, Pipeline
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
         from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         entries = [(str(doc.get("doc_id", str(i))), str(doc.get("text", ""))) for i, doc in enumerate(corpus)]
-
-        # Haystack's store requires unique ids; surface a clean error rather than
-        # leaking the framework's DuplicateDocumentError.
-        doc_ids = [doc_id for doc_id, _ in entries]
-        if len(set(doc_ids)) != len(doc_ids):
-            duplicate = next(doc_id for doc_id in doc_ids if doc_ids.count(doc_id) > 1)
-            raise ValueError(f"{cls.__name__}: duplicate doc_id {duplicate!r} in corpus; ids must be unique.")
 
         # Nothing rankable -> empty result (rather than leaking a framework
         # error): an empty/whitespace query, an all-empty-text corpus (BM25

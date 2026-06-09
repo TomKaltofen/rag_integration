@@ -13,9 +13,11 @@ is treated as the documents ingested into R2R, and the stub surfaces only the
 canned doc_ids that are actually in that corpus (with the corpus's own text), so
 nothing is fabricated. A query with no canned response yields ``("", [])`` (the
 server has nothing indexed for it). The canned answer is surfaced only when the
-document it is drawn from (``answer_doc_id``) survives narrowing; otherwise the
-result is retrieve-only (the surviving documents, an empty answer), so the
-answer never rests on documents it was not drawn from.
+document it is drawn from (``answer_doc_id``) is among the documents actually
+surfaced: it is suppressed when that document is dropped either by corpus
+narrowing or by ``top_k`` truncation. In both cases the result is retrieve-only
+(the surviving documents, an empty answer), so the answer always rests on the
+surfaced documents it was drawn from.
 
 Zero-download, zero-dependency (stdlib ``json``), deterministic; a CI anchor
 alongside the Haystack backend.
@@ -70,8 +72,13 @@ class R2RFixtureOrchestrator(BaseOrchestratorConnector):
             return responses
         with cls._cache_lock:
             if cls._responses is None:
-                with _FIXTURE_PATH.open(encoding="utf-8") as fixture_file:
-                    payload = json.load(fixture_file)
+                try:
+                    with _FIXTURE_PATH.open(encoding="utf-8") as fixture_file:
+                        payload = json.load(fixture_file)
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise RuntimeError(
+                        f"{cls.__name__}: failed to load bundled R2R fixture {_FIXTURE_PATH}: {exc}"
+                    ) from exc
                 cls._responses = dict(payload.get("responses", {}))
             return cls._responses
 
@@ -107,10 +114,11 @@ class R2RFixtureOrchestrator(BaseOrchestratorConnector):
             return "", []
 
         # The canned answer is drawn from one source document (answer_doc_id).
-        # Surface the answer only if that document survived narrowing; otherwise
-        # the answer's support is not in the corpus, so return a retrieve-only
-        # result (the surviving documents, no answer) rather than an answer
-        # grounded on documents it was not drawn from.
+        # Surface the answer only if that document is among the SURFACED
+        # documents: it may have been dropped by corpus narrowing or by top_k
+        # truncation, and in either case we return a retrieve-only result (the
+        # surviving documents, no answer) rather than an answer whose support
+        # was not surfaced.
         answer_doc_id = str(response.get("answer_doc_id", ""))
         surfaced_ids = {document["doc_id"] for document in documents}
         answer = str(response.get("answer", "")) if answer_doc_id in surfaced_ids else ""

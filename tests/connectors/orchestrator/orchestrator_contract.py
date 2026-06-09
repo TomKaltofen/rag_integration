@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type
 
+import pytest
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -146,14 +147,34 @@ class OrchestratorConnectorContractBase(ABC):
         assert result == {"answer": "", "documents": []}
 
     def test_empty_query_returns_empty(self) -> None:
-        """An empty/whitespace query yields no documents (no framework error leak)."""
+        """An empty/whitespace query yields no answer and no documents (no framework error leak)."""
         result = self._answer("   ", self.sample_corpus(), top_k=len(self.sample_corpus()))
+        assert result["answer"] == ""
         assert result["documents"] == []
 
     def test_nonpositive_top_k_returns_empty(self) -> None:
-        """A non-positive top_k yields no documents (no framework error leak)."""
+        """A non-positive top_k yields no answer and no documents (no framework error leak)."""
         result = self._answer(self.sample_query(), self.sample_corpus(), top_k=0)
+        assert result["answer"] == ""
         assert result["documents"] == []
+
+    def test_duplicate_doc_id_raises(self) -> None:
+        """Duplicate corpus doc_ids are rejected uniformly by the base (no silent dedup)."""
+        corpus = [
+            {"doc_id": "dup", "text": "first entry"},
+            {"doc_id": "dup", "text": "second entry"},
+        ]
+        with pytest.raises(ValueError, match="duplicate doc_id"):
+            self._answer(self.sample_query(), corpus, top_k=2)
+
+    def test_positional_default_doc_id_collision_raises(self) -> None:
+        """An entry without doc_id defaults to its index, so it collides with an explicit id '1'."""
+        corpus = [
+            {"doc_id": "1", "text": "explicit id one"},
+            {"text": "no doc_id: defaults to positional index '1'"},
+        ]
+        with pytest.raises(ValueError, match="duplicate doc_id"):
+            self._answer(self.sample_query(), corpus, top_k=2)
 
     def test_idempotent(self) -> None:
         corpus = self.sample_corpus()

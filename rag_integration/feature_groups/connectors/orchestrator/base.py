@@ -107,10 +107,26 @@ class BaseOrchestratorConnector(FeatureGroup):
         Returns ``(answer, documents)`` where ``documents`` is a list of
         ``{doc_id, text, score}`` dicts the pipeline surfaced (best first) and
         ``answer`` is the framework's answer. Each document's ``doc_id`` must be
-        one of the supplied corpus ids (the base validates this). An empty
-        corpus yields ``("", [])``.
+        one of the supplied corpus ids (the base validates this). The base
+        short-circuits an empty corpus before dispatching, so :meth:`_run` is
+        never called with one.
         """
         ...
+
+    @classmethod
+    def _validate_unique_doc_ids(cls, corpus: List[Dict[str, Any]]) -> None:
+        """Reject duplicate effective doc_ids, uniformly across backends.
+
+        An entry without ``doc_id`` defaults to its positional index, so an
+        explicit ``doc_id`` ``"1"`` collides with a missing ``doc_id`` at
+        index 1; the check runs on the effective ids.
+        """
+        seen: Set[str] = set()
+        for i, doc in enumerate(corpus):
+            doc_id = str(doc.get("doc_id", str(i)))
+            if doc_id in seen:
+                raise ValueError(f"{cls.__name__}: duplicate doc_id {doc_id!r} in corpus; ids must be unique.")
+            seen.add(doc_id)
 
     @classmethod
     def _validate_documents(cls, documents: List[Dict[str, Any]], corpus: List[Dict[str, Any]]) -> None:
@@ -128,6 +144,7 @@ class BaseOrchestratorConnector(FeatureGroup):
         """Assemble the answer contract around the backend's :meth:`_run`."""
         if not corpus:
             return {"answer": "", "documents": []}
+        cls._validate_unique_doc_ids(corpus)
         answer, documents = cls._run(query, corpus, top_k)
         cls._validate_documents(documents, corpus)
         # A non-empty answer must rest on surfaced documents. An empty answer
