@@ -160,6 +160,12 @@ results = mlodaAPI.run_all(
 )
 ```
 
+A second backend, `TfidfRetriever` (`retrieve_backend="tfidf"`), ranks the same
+corpus by TF-IDF cosine similarity (a vector-space lexical counterpart to the
+probabilistic `bm25s`): it vectorizes the corpus and query with the repo's
+deterministic TF-IDF embedder and needs no extra dependency, so it is also
+zero-download and a CI anchor.
+
 Install the family's backend with `uv sync --extra connectors`.
 
 The `rerank` family (`query_text + candidates + top_k -> reordered passages`)
