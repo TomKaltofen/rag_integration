@@ -145,6 +145,16 @@ class OrchestratorConnectorContractBase(ABC):
         result = self._answer(self.sample_query(), [], top_k=5)
         assert result == {"answer": "", "documents": []}
 
+    def test_empty_query_returns_empty(self) -> None:
+        """An empty/whitespace query yields no documents (no framework error leak)."""
+        result = self._answer("   ", self.sample_corpus(), top_k=len(self.sample_corpus()))
+        assert result["documents"] == []
+
+    def test_nonpositive_top_k_returns_empty(self) -> None:
+        """A non-positive top_k yields no documents (no framework error leak)."""
+        result = self._answer(self.sample_query(), self.sample_corpus(), top_k=0)
+        assert result["documents"] == []
+
     def test_idempotent(self) -> None:
         corpus = self.sample_corpus()
         first = self._answer(self.sample_query(), corpus, top_k=len(corpus))

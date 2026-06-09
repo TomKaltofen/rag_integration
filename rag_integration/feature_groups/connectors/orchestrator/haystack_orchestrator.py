@@ -50,16 +50,18 @@ class HaystackOrchestrator(BaseOrchestratorConnector):
             duplicate = next(doc_id for doc_id in doc_ids if doc_ids.count(doc_id) > 1)
             raise ValueError(f"{cls.__name__}: duplicate doc_id {duplicate!r} in corpus; ids must be unique.")
 
-        # An all-empty-text corpus makes BM25's average document length zero
-        # (division by zero); nothing is rankable, so return an empty result.
-        if not any(text.strip() for _, text in entries):
+        # Nothing rankable -> empty result (rather than leaking a framework
+        # error): an empty/whitespace query, an all-empty-text corpus (BM25
+        # divides by the average document length), or a non-positive top_k.
+        effective_k = min(top_k, len(entries))
+        if not query.strip() or not any(text.strip() for _, text in entries) or effective_k <= 0:
             return "", []
 
         store = InMemoryDocumentStore()
         store.write_documents([Document(id=doc_id, content=text) for doc_id, text in entries])
 
         pipeline = Pipeline()
-        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=store, top_k=top_k))
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=store, top_k=effective_k))
         result = pipeline.run({"retriever": {"query": query}})
 
         # document.score is Optional[float]; the BM25 retriever filters out
