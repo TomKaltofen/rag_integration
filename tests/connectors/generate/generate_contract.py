@@ -120,9 +120,13 @@ class GenerateConnectorContractBase(ABC):
         assert result["answer"].strip(), "canonical query produced an empty answer; assertions would be vacuous"
 
     def test_citations_are_grounded(self) -> None:
-        """Every citation is one of the supplied passage doc_ids (no invented sources)."""
+        """Every citation is one of the supplied passage doc_ids (no invented sources).
+
+        Uses the same positional-fallback rule as the base validator so a
+        passage without an explicit ``doc_id`` does not crash this assertion.
+        """
         passages = self.sample_passages()
-        known = {str(p["doc_id"]) for p in passages}
+        known = {str(p.get("doc_id", str(i))) for i, p in enumerate(passages)}
         result = self._answer(self.sample_query(), passages)
         assert set(result["citations"]) <= known
 

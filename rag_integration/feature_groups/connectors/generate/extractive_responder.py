@@ -27,6 +27,13 @@ class ExtractiveResponder(BaseGenerateConnector):
     order, so the output is stable and deterministic. If no sentence shares any
     token with the query, the answer is empty with no citations (the responder
     does not invent an answer).
+
+    Baseline limitations (acceptable for a zero-dependency CI anchor): the
+    tokenizer matches ``[a-z0-9]+``, so it is English/ASCII-only (accented or
+    non-Latin text scores low or zero); the sentence splitter is punctuation
+    based (``[.!?]``), so it over-splits abbreviations and keeps embedded
+    newlines verbatim. A higher-fidelity or multilingual responder would be a
+    separate backend.
     """
 
     GENERATE_BACKENDS = {
