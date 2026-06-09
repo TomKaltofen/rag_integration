@@ -130,6 +130,11 @@ class BaseOrchestratorConnector(FeatureGroup):
             return {"answer": "", "documents": []}
         answer, documents = cls._run(query, corpus, top_k)
         cls._validate_documents(documents, corpus)
+        # A non-empty answer must rest on surfaced documents. An empty answer
+        # with no documents is a valid retrieve-only / no-match result; an empty
+        # answer alongside documents is fine too (retrieve-only pipeline).
+        if answer.strip() and not documents:
+            raise ValueError(f"{cls.__name__}._run returned a non-empty answer with no supporting documents.")
         return {"answer": answer, "documents": documents}
 
     @classmethod

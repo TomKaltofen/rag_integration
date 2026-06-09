@@ -41,18 +41,29 @@ class HaystackOrchestrator(BaseOrchestratorConnector):
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
         from haystack.document_stores.in_memory import InMemoryDocumentStore
 
+        entries = [(str(doc.get("doc_id", str(i))), str(doc.get("text", ""))) for i, doc in enumerate(corpus)]
+
+        # Haystack's store requires unique ids; surface a clean error rather than
+        # leaking the framework's DuplicateDocumentError.
+        doc_ids = [doc_id for doc_id, _ in entries]
+        if len(set(doc_ids)) != len(doc_ids):
+            duplicate = next(doc_id for doc_id in doc_ids if doc_ids.count(doc_id) > 1)
+            raise ValueError(f"{cls.__name__}: duplicate doc_id {duplicate!r} in corpus; ids must be unique.")
+
+        # An all-empty-text corpus makes BM25's average document length zero
+        # (division by zero); nothing is rankable, so return an empty result.
+        if not any(text.strip() for _, text in entries):
+            return "", []
+
         store = InMemoryDocumentStore()
-        store.write_documents(
-            [
-                Document(id=str(doc.get("doc_id", str(i))), content=str(doc.get("text", "")))
-                for i, doc in enumerate(corpus)
-            ]
-        )
+        store.write_documents([Document(id=doc_id, content=text) for doc_id, text in entries])
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=store, top_k=top_k))
         result = pipeline.run({"retriever": {"query": query}})
 
+        # document.score is Optional[float]; the BM25 retriever filters out
+        # non-positive scores, so every surfaced document carries a float score.
         documents = [
             {"doc_id": document.id, "text": document.content, "score": float(document.score)}
             for document in result["retriever"]["documents"]
