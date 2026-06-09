@@ -92,7 +92,16 @@ class BaseGenerateConnector(FeatureGroup):
         passages = options.get(cls.PASSAGES)
         if passages is None:
             raise ValueError(f"{cls.__name__} requires '{cls.PASSAGES}' in options: a list of {{doc_id, text}} dicts.")
-        return list(passages)
+        passages = list(passages)
+        seen: Set[str] = set()
+        for i, passage in enumerate(passages):
+            doc_id = str(passage.get("doc_id", str(i)))
+            if doc_id in seen:
+                raise ValueError(
+                    f"{cls.__name__} received duplicate passage doc_id '{doc_id}'; doc_ids must be unique."
+                )
+            seen.add(doc_id)
+        return passages
 
     @classmethod
     @abstractmethod
@@ -102,19 +111,22 @@ class BaseGenerateConnector(FeatureGroup):
         Returns ``(answer, citations)`` where ``answer`` is the answer text and
         ``citations`` is the list of ``doc_id``s the answer draws from. Each
         citation must be the ``doc_id`` of one of the supplied passages (the
-        base validates this). Empty passages yield ``("", [])``.
+        base validates this). The base handles empty passages itself, so this
+        hook is never called with an empty list.
         """
         ...
 
     @classmethod
     def _validate_citations(cls, citations: List[str], passages: List[Dict[str, Any]]) -> None:
-        """Reject any citation that is not one of the supplied passage doc_ids."""
+        """Reject any citation that is not one of the supplied passage doc_ids, or cited twice."""
         known = {str(p.get("doc_id", str(i))) for i, p in enumerate(passages)}
         for citation in citations:
             if citation not in known:
                 raise ValueError(
                     f"{cls.__name__}._generate cited '{citation}', which is not among the supplied passages."
                 )
+        if len(citations) != len(set(citations)):
+            raise ValueError(f"{cls.__name__}._generate returned duplicate citations; each doc_id may be cited once.")
 
     @classmethod
     def _answer(cls, query: str, passages: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -123,13 +135,22 @@ class BaseGenerateConnector(FeatureGroup):
             return {"answer": "", "citations": []}
         answer, citations = cls._generate(query, passages)
         cls._validate_citations(citations, passages)
-        # Grounded by construction: a non-empty answer must cite its source(s),
-        # so a backend cannot return an answer with no provenance.
+        # Grounded by construction, in both directions: a non-empty answer must
+        # cite its source(s), and citations without an answer are meaningless.
         if answer.strip() and not citations:
             raise ValueError(
                 f"{cls.__name__}._generate returned a non-empty answer with no citations; "
                 f"a grounded answer must cite at least one supplied passage."
             )
+        if not answer.strip() and citations:
+            raise ValueError(
+                f"{cls.__name__}._generate returned citations with an empty answer; "
+                f"citations are only valid for a non-empty answer."
+            )
+        if not answer.strip():
+            # Normalize a whitespace-only answer so the empty shape is always
+            # exactly {"answer": "", "citations": []}.
+            return {"answer": "", "citations": []}
         return {"answer": answer, "citations": citations}
 
     @classmethod

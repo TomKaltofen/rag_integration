@@ -160,6 +160,12 @@ results = mlodaAPI.run_all(
 )
 ```
 
+A second backend, `TfidfRetriever` (`retrieve_backend="tfidf"`), ranks the same
+corpus by TF-IDF cosine similarity (a vector-space lexical counterpart to the
+probabilistic `bm25s`): it vectorizes the corpus and query with the repo's
+deterministic TF-IDF embedder and needs no extra dependency, so it is also
+zero-download and a CI anchor.
+
 Install the family's backend with `uv sync --extra connectors`.
 
 The `rerank` family (`query_text + candidates + top_k -> reordered passages`)
@@ -173,8 +179,12 @@ The `generate` family (`query_text + passages -> answer + citations`) produces a
 grounded answer from supporting passages. Its canonical backend is
 `ExtractiveResponder` (`generate_backend="extractive"`): pure-Python sentence
 extraction, zero-download and deterministic, and grounded by construction (every
-citation is one of the supplied passages). LLM-backed generators are pedigree
-backends for later.
+citation is one of the supplied passages). A second backend, `TemplateResponder`
+(`generate_backend="template"`), selects the top query-relevant sentences across
+passages, joins them into a fixed template, and cites every passage it drew from
+(multi-citation, vs the extractive responder's single citation); it is likewise
+pure-Python, zero-download, and grounded by construction. LLM-backed generators
+are pedigree backends for later.
 
 The `graph_rag` family (`query_text + nodes + edges + top_k -> ranked passages`)
 scores nodes by query overlap plus a one-hop neighbour bonus: a passage
