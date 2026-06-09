@@ -189,6 +189,14 @@ rule-based NL->SQL executed on stdlib `sqlite3`, with `sqlglot` validating the
 generated SQL is a read-only `SELECT`. Zero-download, deterministic, no LLM;
 values are always bound parameters and identifiers are whitelisted.
 
+The `orchestrator` family (`query_text + corpus + top_k -> answer + documents`)
+wraps a whole external RAG framework as one connector (bring your existing
+pipeline). Its canonical backend is `HaystackOrchestrator`
+(`orchestrator_backend="haystack"`, `uv sync --extra orchestrator`): a real
+Haystack 2.x in-memory BM25 pipeline, zero-download (no model, no server) so it
+runs in CI. Server-shaped tools (R2R, RAGFlow) are fixture-stub backends for
+later.
+
 ## Installation
 
 Clone the repository and install with uv:

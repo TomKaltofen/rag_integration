@@ -56,6 +56,11 @@ graph = [
 structured = [
     "sqlglot>=25",
 ]
+# orchestrator family canonical backend: Haystack 2.x (Apache-2.0). Its in-memory
+# BM25 pipeline is zero-download (no model, no server), so it runs in CI.
+orchestrator = [
+    "haystack-ai>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
