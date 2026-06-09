@@ -41,6 +41,12 @@ eval = [
 connectors = [
     "bm25s>=0.2.0",
 ]
+# rerank family pedigree backend: FlashRank (Apache-2.0, ONNX, no torch). The
+# canonical lexical reranker is pure-Python and needs no extra; this adds the
+# neural cross-encoder backend (model downloads on first use).
+rerank = [
+    "flashrank>=0.2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

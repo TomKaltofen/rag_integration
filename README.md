@@ -162,6 +162,13 @@ results = mlodaAPI.run_all(
 
 Install the family's backend with `uv sync --extra connectors`.
 
+The `rerank` family (`query_text + candidates + top_k -> reordered passages`)
+reorders already-retrieved candidates. Its canonical backend is
+`LexicalReranker` (`rerank_backend="lexical"`): pure-Python token overlap,
+zero-download and deterministic. `FlashRankReranker` (`rerank_backend="flashrank"`,
+`uv sync --extra rerank`) adds a real ONNX cross-encoder; its model downloads on
+first use, so its test runs locally and is skipped on CI.
+
 ## Installation
 
 Clone the repository and install with uv:

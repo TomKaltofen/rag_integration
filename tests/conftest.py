@@ -34,3 +34,8 @@ requires_sentence_transformer_model = pytest.mark.skipif(
     RUNNING_ON_CI,
     reason="Skipped on CI: downloads a sentence-transformers model from the Hugging Face Hub (rate-limited, HTTP 429).",
 )
+
+requires_flashrank_model = pytest.mark.skipif(
+    RUNNING_ON_CI,
+    reason="Skipped on CI: FlashRank downloads its (~4 MB) ONNX model from the network on first use.",
+)
