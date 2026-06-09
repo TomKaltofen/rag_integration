@@ -2,8 +2,10 @@
 
 The whole suite is inherited from :class:`RetrieveConnectorContractBase`; this
 class only wires up the five adapter methods. The corpus is crafted for a
-lexical backend: the query shares literal tokens (``cat``, ``pet``) only with
-``d2``; the distractors (dog, car) share none.
+lexical backend: the query shares both literal tokens (``cat``, ``pet``) only
+with ``d2`` and just ``pet`` with ``d1``, so ``d2`` ranks first and ``d1`` is a
+positively scoring runner-up (the family drops zero-scored passages, so the
+score-margin assertion needs one); the distractors (mat, car) share none.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ class TestBm25sRetriever(RetrieveConnectorContractBase):
     def sample_corpus(cls) -> List[Dict[str, Any]]:
         return [
             {"doc_id": "d0", "text": "The mat lay flat on the floor by the window."},
-            {"doc_id": "d1", "text": "Dogs are loyal and energetic companions."},
+            {"doc_id": "d1", "text": "A dog can be a loyal and energetic pet."},
             {"doc_id": "d2", "text": "A cat is an independent and curious pet."},
             {"doc_id": "d3", "text": "Cars need regular engine oil and maintenance."},
         ]
