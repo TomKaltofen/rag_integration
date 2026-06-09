@@ -1,12 +1,22 @@
-"""Contract test for :class:`NetworkxGraphRag` (zero-download CI anchor)."""
+"""Contract test for :class:`NetworkxGraphRag` (canonical networkx backend).
+
+Skipped cleanly when the ``graph`` extra (networkx) is not installed; the
+stdlib-only :class:`AdjacencyGraphRag` test is the family's zero-download CI
+anchor.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Type
 
+import pytest
+
 from rag_integration.feature_groups.connectors.graph_rag.base import BaseGraphRagConnector
 from rag_integration.feature_groups.connectors.graph_rag.networkx_graph_rag import NetworkxGraphRag
 from tests.connectors.graph_rag.graph_rag_contract import GraphRagConnectorContractBase
+
+# Clean skip (not an error) when the `graph` extra is not installed.
+pytest.importorskip("networkx")
 
 
 class TestNetworkxGraphRag(GraphRagConnectorContractBase):

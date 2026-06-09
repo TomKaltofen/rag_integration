@@ -46,7 +46,10 @@ class AdjacencyGraphRag(BaseGraphRagConnector):
             "explanation": f"Number of passages to return (default {BaseGraphRagConnector.DEFAULT_TOP_K})"
         },
         BaseGraphRagConnector.NODES: {"explanation": "Graph nodes: a list of {doc_id, text} dicts"},
-        BaseGraphRagConnector.EDGES: {"explanation": "Graph edges: a list of [doc_id_a, doc_id_b] pairs"},
+        BaseGraphRagConnector.EDGES: {
+            "explanation": "Graph edges: a list of [doc_id_a, doc_id_b] pairs."
+            " Optional: omitting it degrades scoring to lexical-only (no neighbour bonus)"
+        },
     }
 
     @staticmethod

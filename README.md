@@ -177,8 +177,8 @@ citation is one of the supplied passages). LLM-backed generators are pedigree
 backends for later.
 
 The `graph_rag` family (`query_text + nodes + edges + top_k -> ranked passages`)
-retrieves over a graph: a passage connected to a relevant one is surfaced even
-with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
+scores nodes by query overlap plus a one-hop neighbour bonus: a passage
+connected to a relevant one is surfaced even with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
 (`graph_backend="networkx"`, `uv sync --extra graph`): zero-download,
 deterministic, BSD/pure-Python. A second backend, `AdjacencyGraphRag`
 (`graph_backend="adjacency"`), applies the same overlap + neighbour-bonus
@@ -204,6 +204,7 @@ To install only specific extras, use `uv sync --extra <name>`:
 | `faiss`    | FAISS vector indexing (`faiss-cpu`)                   |
 | `advanced` | Presidio, sentence-transformers, joblib, Pillow, FAISS|
 | `eval`     | BEIR benchmark datasets, pandas, numpy               |
+| `graph`    | networkx graph-RAG backend (`NetworkxGraphRag`)      |
 | `dev`      | tox, pytest, ruff, mypy, bandit                      |
 
 ## CLI
