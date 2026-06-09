@@ -176,6 +176,12 @@ extraction, zero-download and deterministic, and grounded by construction (every
 citation is one of the supplied passages). LLM-backed generators are pedigree
 backends for later.
 
+The `graph_rag` family (`query_text + nodes + edges + top_k -> ranked passages`)
+retrieves over a graph: a passage connected to a relevant one is surfaced even
+with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
+(`graph_backend="networkx"`, `uv sync --extra graph`): zero-download,
+deterministic, BSD/pure-Python.
+
 ## Installation
 
 Clone the repository and install with uv:

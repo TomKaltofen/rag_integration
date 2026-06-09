@@ -47,6 +47,10 @@ connectors = [
 rerank = [
     "flashrank>=0.2.0",
 ]
+# graph_rag family canonical backend: networkx (BSD, pure-Python, zero-download).
+graph = [
+    "networkx>=3.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
