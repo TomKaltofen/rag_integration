@@ -20,9 +20,8 @@ class FlashRankReranker(BaseRerankConnector):
     """Cross-encoder reranking via FlashRank (``rerank_backend="flashrank"``).
 
     The default model is ``ms-marco-TinyBERT-L-2-v2`` (~4 MB, Apache-2.0). The
-    ranker is cached at class level (keyed by model name) since constructing it
-    loads the ONNX model; loading is guarded by a lock so concurrent callers do
-    not build it twice.
+    ranker is cached at class level since constructing it loads the ONNX model;
+    loading is guarded by a lock so concurrent callers do not build it twice.
     """
 
     # Fixed to the small default model. A configurable model option is omitted
@@ -44,29 +43,27 @@ class FlashRankReranker(BaseRerankConnector):
         BaseRerankConnector.CANDIDATES: {"explanation": "Candidate passages: a list of {doc_id, text} dicts"},
     }
 
-    _ranker_cache: tuple[str, Any] | None = None
+    # Single-slot cache: only DEFAULT_MODEL is ever loaded.
+    _ranker: Any | None = None
     _cache_lock = threading.Lock()
 
     @classmethod
-    def _get_ranker(cls, model_name: str) -> Any:
+    def _get_ranker(cls) -> Any:
         from flashrank import Ranker
 
-        cache = cls._ranker_cache
-        if cache is not None and cache[0] == model_name:
-            return cache[1]
-        with cls._cache_lock:
-            cache = cls._ranker_cache
-            if cache is not None and cache[0] == model_name:
-                return cache[1]
-            ranker = Ranker(model_name=model_name)
-            cls._ranker_cache = (model_name, ranker)
+        ranker = cls._ranker
+        if ranker is not None:
             return ranker
+        with cls._cache_lock:
+            if cls._ranker is None:
+                cls._ranker = Ranker(model_name=cls.DEFAULT_MODEL)
+            return cls._ranker
 
     @classmethod
     def _rank(cls, query: str, texts: List[str], top_k: int) -> List[Tuple[int, float]]:
         from flashrank import RerankRequest
 
-        ranker = cls._get_ranker(cls.DEFAULT_MODEL)
+        ranker = cls._get_ranker()
         # Use the candidate's list index as the passage id so results map back
         # to positions regardless of how FlashRank reorders them.
         passages = [{"id": str(idx), "text": text} for idx, text in enumerate(texts)]
