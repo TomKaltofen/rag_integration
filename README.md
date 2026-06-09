@@ -194,8 +194,13 @@ wraps a whole external RAG framework as one connector (bring your existing
 pipeline). Its canonical backend is `HaystackOrchestrator`
 (`orchestrator_backend="haystack"`, `uv sync --extra orchestrator`): a real
 Haystack 2.x in-memory BM25 pipeline, zero-download (no model, no server) so it
-runs in CI. Server-shaped tools (R2R, RAGFlow) are fixture-stub backends for
-later.
+runs in CI. A second backend, `R2RFixtureOrchestrator`
+(`orchestrator_backend="r2r"`), covers a different integration mode: it models a
+server-shaped tool (R2R) over a static JSON fixture of canned responses (the
+open-kgo `rest_public` pattern), answering with honest-surface narrowing
+(surfacing only canned documents that are in the supplied corpus). No server, no
+network, zero-dependency, deterministic. Other server-shaped tools (e.g.
+RAGFlow) can follow the same fixture-stub pattern.
 
 ## Installation
 

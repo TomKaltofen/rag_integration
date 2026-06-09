@@ -66,6 +66,10 @@ orchestrator = [
 where = ["."]
 include = ["rag_integration*"]
 
+[tool.setuptools.package-data]
+# Ship the orchestrator R2R fixture-stub's canned-response JSON in the wheel.
+"rag_integration.feature_groups.connectors.orchestrator" = ["fixtures/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["rag_integration", "tests"]
 python_files = ["test_*.py"]
