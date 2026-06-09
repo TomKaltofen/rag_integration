@@ -173,8 +173,12 @@ The `generate` family (`query_text + passages -> answer + citations`) produces a
 grounded answer from supporting passages. Its canonical backend is
 `ExtractiveResponder` (`generate_backend="extractive"`): pure-Python sentence
 extraction, zero-download and deterministic, and grounded by construction (every
-citation is one of the supplied passages). LLM-backed generators are pedigree
-backends for later.
+citation is one of the supplied passages). A second backend, `TemplateResponder`
+(`generate_backend="template"`), selects the top query-relevant sentences across
+passages, joins them into a fixed template, and cites every passage it drew from
+(multi-citation, vs the extractive responder's single citation); it is likewise
+pure-Python, zero-download, and grounded by construction. LLM-backed generators
+are pedigree backends for later.
 
 ## Installation
 

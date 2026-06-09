@@ -35,12 +35,18 @@ class GenerateConnectorContractBase(ABC):
     @classmethod
     @abstractmethod
     def sample_passages(cls) -> List[Dict[str, Any]]:
-        """Return supporting passages (``{doc_id, text}``) with one clearly relevant doc."""
+        """Return supporting passages (``{doc_id, text}``) with at least one clearly relevant doc.
+
+        ``expected_citation_doc_id`` names the one that must be cited; a backend
+        whose distinguishing behaviour is multi-passage citation may make several
+        passages relevant (the contract only requires that doc to be among them).
+        """
 
     @classmethod
     @abstractmethod
     def sample_query(cls) -> str:
-        """Return a query answerable from exactly one of ``sample_passages``."""
+        """Return a query answerable from ``sample_passages`` with a determinate
+        ``expected_citation_doc_id`` (other passages may also be relevant)."""
 
     @classmethod
     @abstractmethod
