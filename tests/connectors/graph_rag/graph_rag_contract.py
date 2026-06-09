@@ -170,7 +170,9 @@ class GraphRagConnectorContractBase(ABC):
 
         The score comparison is the load-bearing assertion (tie-break
         independent); the top_k=2 membership check then confirms the connected
-        node is actually surfaced and the isolated one dropped."""
+        node is actually surfaced and the isolated one dropped. The proof is
+        scoped to backends that score on query relevance (the family contract):
+        the two zero-overlap nodes are only separable via the edge."""
         nodes = self.sample_nodes()
         full = self._passages(self.sample_query(), nodes, self.sample_edges(), top_k=len(nodes))
         score = {p["doc_id"]: p["score"] for p in full}
