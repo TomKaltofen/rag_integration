@@ -2908,7 +2908,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sentence-transformers", marker = "extra == 'advanced'", specifier = ">=2.2.0" },
-    { name = "sqlglot", marker = "extra == 'structured'", specifier = ">=20" },
+    { name = "sqlglot", marker = "extra == 'structured'", specifier = ">=25" },
     { name = "tox", marker = "extra == 'dev'" },
     { name = "tox-uv", marker = "extra == 'dev'" },
 ]

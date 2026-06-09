@@ -49,3 +49,31 @@ class TestRuleBasedSql(StructuredConnectorContractBase):
     @classmethod
     def expected_filter_keys(cls) -> Set[str]:
         return {"Whiskers", "Felix"}
+
+    @classmethod
+    def filter_value(cls) -> str:
+        return "cat"
+
+    # -- Backend-specific behavior ---------------------------------------------
+
+    def test_count_with_filter_counts_only_matching_rows(self) -> None:
+        """Count intent must keep the filter: COUNT over cats only, not all rows."""
+        result = self._query("how many pets have species cat")
+        assert "?" in result["sql"]
+        (only_value,) = result["rows"][0].values()
+        assert only_value == 2
+
+    def test_snake_case_column_maps_to_filter(self) -> None:
+        """The tokenizer keeps underscores, so snake_case columns are recognised."""
+        rows = [{"pet_name": "Rex", "unit_price": 5}, {"pet_name": "Felix", "unit_price": 7}]
+        result = RuleBasedSql._query("which items have unit_price 5", "items", ["pet_name", "unit_price"], rows)
+        assert 'LOWER("unit_price") = ?' in result["sql"]
+        assert [row["pet_name"] for row in result["rows"]] == ["Rex"]
+
+    def test_decimal_filter_value_binds_full_number(self) -> None:
+        """The tokenizer keeps decimals, so "2.5" binds whole (not "2" then "5")."""
+        rows = [{"name": "Rex", "age": 2.5}, {"name": "Felix", "age": 3}]
+        result = RuleBasedSql._query("which pets have age 2.5", "pets", ["name", "age"], rows)
+        assert "?" in result["sql"]
+        assert "2.5" not in result["sql"]
+        assert [row["name"] for row in result["rows"]] == ["Rex"]

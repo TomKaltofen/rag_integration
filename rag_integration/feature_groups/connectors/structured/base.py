@@ -13,7 +13,8 @@ Output (single row, keyed by the root feature name)::
     {"structured_rows": {"sql": "SELECT ...", "rows": [{"col": value, ...}, ...]}}
 
 The base owns identifier validation, SQL safety (it parses the generated SQL
-with sqlglot and rejects anything that is not a read-only ``SELECT``), the
+with sqlglot and rejects anything that is not a single top-level ``SELECT``
+statement, with no set operations and no stacked statements), the
 in-memory SQLite execution, and row typing. A backend implements only
 :meth:`_to_sql` (the natural-language-to-SQL translation), which returns a
 parameterised statement so values never reach SQL by string interpolation.
@@ -113,23 +114,26 @@ class BaseStructuredConnector(FeatureGroup):
         Returns ``(sql, params)`` where ``sql`` is a single ``SELECT`` over
         ``table`` using ``?`` placeholders for any values, and ``params`` are the
         bound values in order. ``table`` and ``columns`` are already validated
-        identifiers. The base parses the result with sqlglot and rejects any
-        non-``SELECT`` statement.
+        identifiers. The base parses the result with sqlglot and rejects
+        anything but a single top-level bare ``SELECT`` statement (no set
+        operations, no stacked statements).
         """
         ...
 
     @classmethod
     def _validate_select(cls, sql: str) -> None:
+        """Require ``sql`` to be a single top-level ``SELECT`` statement
+        (no set operations, no stacked statements)."""
         import sqlglot
         import sqlglot.expressions as exp
-        from sqlglot.errors import ParseError
+        from sqlglot.errors import SqlglotError
 
         try:
-            parsed = sqlglot.parse_one(sql, read="sqlite")
-        except ParseError as error:
+            statements = sqlglot.parse(sql, read="sqlite")
+        except SqlglotError as error:
             raise ValueError(f"{cls.__name__}._to_sql produced unparseable SQL: {sql!r}") from error
-        if not isinstance(parsed, exp.Select):
-            raise ValueError(f"{cls.__name__}._to_sql produced a non-SELECT statement, which is not allowed: {sql!r}")
+        if len(statements) != 1 or not isinstance(statements[0], exp.Select):
+            raise ValueError(f"{cls.__name__}._to_sql must produce a single top-level SELECT statement, got: {sql!r}")
 
     @classmethod
     def _query(
@@ -144,21 +148,29 @@ class BaseStructuredConnector(FeatureGroup):
         columns = [cls._validate_identifier(c, "column") for c in columns]
         if not columns:
             raise ValueError(f"{cls.__name__}: at least one column is required.")
-        if len(set(columns)) != len(columns):
-            raise ValueError(f"{cls.__name__}: duplicate column names are not allowed: {columns}.")
+        if len({c.lower() for c in columns}) != len(columns):
+            raise ValueError(
+                f"{cls.__name__}: duplicate column names (SQLite is case-insensitive) are not allowed: {columns}."
+            )
 
         sql, params = cls._to_sql(question, table, columns)
         cls._validate_select(sql)
 
         connection = sqlite3.connect(":memory:")
         try:
-            # table and columns are whitelisted identifiers (validated above);
-            # all row values are bound parameters, never interpolated.
-            column_ddl = ", ".join(columns)
-            connection.execute(f"CREATE TABLE {table} ({column_ddl})")
+            # table and columns are whitelisted identifiers (validated above,
+            # quotes excluded by the whitelist) and double-quoted so reserved
+            # words work; all row values are bound parameters, never interpolated.
+            column_ddl = ", ".join(f'"{c}"' for c in columns)
+            connection.execute(f'CREATE TABLE "{table}" ({column_ddl})')
             placeholders = ", ".join("?" for _ in columns)
-            insert_sql = f"INSERT INTO {table} ({column_ddl}) VALUES ({placeholders})"  # nosec
+            insert_sql = f'INSERT INTO "{table}" ({column_ddl}) VALUES ({placeholders})'  # nosec B608
             connection.executemany(insert_sql, [[row.get(c) for c in columns] for row in rows])
+
+            # Defense-in-depth: make the connection read-only at the SQLite
+            # level before running backend SQL, so any write attempt fails
+            # regardless of sqlglot version or validation behavior.
+            connection.execute("PRAGMA query_only = ON")
 
             cursor = connection.execute(sql, params)
             result_columns = [description[0] for description in cursor.description]
@@ -175,7 +187,13 @@ class BaseStructuredConnector(FeatureGroup):
             options = feature.options
             question = str(cls._require(options, cls.QUESTION))
             table = str(cls._require(options, cls.TABLE))
-            columns = [str(c) for c in cls._require(options, cls.COLUMNS)]
-            rows = [dict(row) for row in cls._require(options, cls.ROWS)]
+            raw_columns = cls._require(options, cls.COLUMNS)
+            if not isinstance(raw_columns, (list, tuple)):
+                raise ValueError(f"{cls.__name__}: '{cls.COLUMNS}' must be a list or tuple of column names.")
+            columns = [str(c) for c in raw_columns]
+            raw_rows = cls._require(options, cls.ROWS)
+            if not isinstance(raw_rows, (list, tuple)) or not all(isinstance(row, dict) for row in raw_rows):
+                raise ValueError(f"{cls.__name__}: '{cls.ROWS}' must be a list or tuple of dicts.")
+            rows = [dict(row) for row in raw_rows]
             return [{cls.ROOT_FEATURE_NAME: cls._query(question, table, columns, rows)}]
         return []

@@ -68,6 +68,11 @@ class StructuredConnectorContractBase(ABC):
     def expected_filter_keys(cls) -> Set[str]:
         """The ``key_column`` values expected from ``filter_question`` (a strict subset)."""
 
+    @classmethod
+    @abstractmethod
+    def filter_value(cls) -> str:
+        """The literal value that ``filter_question`` filters on (used to prove binding)."""
+
     # -- Helpers --------------------------------------------------------------
 
     @classmethod
@@ -146,6 +151,25 @@ class StructuredConnectorContractBase(ABC):
         assert keys == self.expected_filter_keys()
         assert len(result["rows"]) < len(self.rows()), "filter did not narrow the result"
 
+    def test_filter_value_is_bound_not_interpolated(self) -> None:
+        """Safety: the filter value reaches SQL as a ``?`` placeholder, never as a literal."""
+        result = self._query(self.filter_question())
+        assert "?" in result["sql"]
+        assert self.filter_value() not in result["sql"]
+
+    def test_unmatched_question_lists_all_rows(self) -> None:
+        """Pin the list-all fallback: a question matching no intent returns every row."""
+        result = self._query("")
+        keys = {row[self.key_column()] for row in result["rows"]}
+        assert keys == {row[self.key_column()] for row in self.rows()}
+
+    def test_count_on_empty_table_returns_zero(self) -> None:
+        """Pin behavior on an empty table: a count question returns 0, not an error."""
+        connector = self.connector_class()
+        result = connector._query(self.count_question(), self.table_name(), self.columns(), [])
+        (only_value,) = result["rows"][0].values()
+        assert only_value == 0
+
     def test_rejects_non_select_sql(self) -> None:
         """Safety: the base rejects any generated statement that is not a SELECT."""
         connector = self.connector_class()
@@ -164,6 +188,14 @@ class StructuredConnectorContractBase(ABC):
         connector = self.connector_class()
         with pytest.raises(ValueError):
             connector._query("anything", "pets; DROP TABLE pets", self.columns(), self.rows())
+
+    def test_query_rejects_bad_column_identifier_end_to_end(self) -> None:
+        """Safety through the production path: a malicious column name is rejected
+        by ``_query`` itself, not only by the isolated validator."""
+        connector = self.connector_class()
+        bad_columns = [*self.columns(), 'evil" FROM x; --']
+        with pytest.raises(ValueError):
+            connector._query("anything", self.table_name(), bad_columns, self.rows())
 
     def test_idempotent(self) -> None:
         first = self._query(self.filter_question())
