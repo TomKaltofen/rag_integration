@@ -182,6 +182,13 @@ with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
 (`graph_backend="networkx"`, `uv sync --extra graph`): zero-download,
 deterministic, BSD/pure-Python.
 
+The `structured` family (`question + table -> SQL -> typed rows`) answers a
+natural-language question over a relational table. Its canonical backend is
+`RuleBasedSql` (`structured_backend="rule_based"`, `uv sync --extra structured`):
+rule-based NL->SQL executed on stdlib `sqlite3`, with `sqlglot` validating the
+generated SQL is a read-only `SELECT`. Zero-download, deterministic, no LLM;
+values are always bound parameters and identifiers are whitelisted.
+
 ## Installation
 
 Clone the repository and install with uv:
