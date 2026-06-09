@@ -169,6 +169,13 @@ zero-download and deterministic. `FlashRankReranker` (`rerank_backend="flashrank
 `uv sync --extra rerank`) adds a real ONNX cross-encoder; its model downloads on
 first use, so its test runs locally and is skipped on CI.
 
+The `generate` family (`query_text + passages -> answer + citations`) produces a
+grounded answer from supporting passages. Its canonical backend is
+`ExtractiveResponder` (`generate_backend="extractive"`): pure-Python sentence
+extraction, zero-download and deterministic, and grounded by construction (every
+citation is one of the supplied passages). LLM-backed generators are pedigree
+backends for later.
+
 ## Installation
 
 Clone the repository and install with uv:
