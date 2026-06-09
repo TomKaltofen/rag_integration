@@ -25,8 +25,11 @@ class FlashRankReranker(BaseRerankConnector):
     not build it twice.
     """
 
+    # Fixed to the small default model. A configurable model option is omitted
+    # deliberately: the base `_rank(query, texts, top_k)` contract passes no
+    # options, so advertising a model option here would be a surface lie. If a
+    # future need arises, plumb it through `calculate_feature`, not here.
     DEFAULT_MODEL = "ms-marco-TinyBERT-L-2-v2"
-    MODEL_NAME = "rerank_model"
 
     RERANK_BACKENDS = {
         "flashrank": "Cross-encoder reranking (FlashRank, ONNX)",
@@ -39,7 +42,6 @@ class FlashRankReranker(BaseRerankConnector):
             "explanation": f"Number of passages to return after reranking (default {BaseRerankConnector.DEFAULT_TOP_K})"
         },
         BaseRerankConnector.CANDIDATES: {"explanation": "Candidate passages: a list of {doc_id, text} dicts"},
-        MODEL_NAME: {"explanation": f"FlashRank model name (default {DEFAULT_MODEL})"},
     }
 
     _ranker_cache: tuple[str, Any] | None = None

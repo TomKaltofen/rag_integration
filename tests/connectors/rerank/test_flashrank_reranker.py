@@ -9,10 +9,15 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Type
 
+import pytest
+
 from rag_integration.feature_groups.connectors.rerank.base import BaseRerankConnector
 from rag_integration.feature_groups.connectors.rerank.flashrank_reranker import FlashRankReranker
 from tests.conftest import requires_flashrank_model
 from tests.connectors.rerank.rerank_contract import RerankConnectorContractBase
+
+# Clean skip (not an error) when the `rerank` extra is not installed.
+pytest.importorskip("flashrank")
 
 
 @requires_flashrank_model
