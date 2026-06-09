@@ -35,12 +35,18 @@ class GenerateConnectorContractBase(ABC):
     @classmethod
     @abstractmethod
     def sample_passages(cls) -> List[Dict[str, Any]]:
-        """Return supporting passages (``{doc_id, text}``) with one clearly relevant doc."""
+        """Return supporting passages (``{doc_id, text}``) with at least one clearly relevant doc.
+
+        ``expected_citation_doc_id`` names the one that must be cited; a backend
+        whose distinguishing behaviour is multi-passage citation may make several
+        passages relevant (the contract only requires that doc to be among them).
+        """
 
     @classmethod
     @abstractmethod
     def sample_query(cls) -> str:
-        """Return a query answerable from exactly one of ``sample_passages``."""
+        """Return a query answerable from ``sample_passages`` with a determinate
+        ``expected_citation_doc_id`` (other passages may also be relevant)."""
 
     @classmethod
     @abstractmethod
@@ -131,10 +137,11 @@ class GenerateConnectorContractBase(ABC):
         assert set(result["citations"]) <= known
 
     def test_nonempty_answer_is_cited(self) -> None:
-        """Grounded by construction: a non-empty answer must cite >=1 passage."""
+        """Grounded by construction: the canonical query yields a non-empty
+        answer, and a non-empty answer must cite >=1 passage."""
         result = self._answer(self.sample_query(), self.sample_passages())
-        if result["answer"].strip():
-            assert result["citations"], "non-empty answer returned no citations"
+        assert result["answer"].strip(), "canonical query produced an empty answer"
+        assert result["citations"], "non-empty answer returned no citations"
 
     def test_relevant_passage_cited(self) -> None:
         """Not-a-stub proof: the relevant passage is cited."""
@@ -144,7 +151,13 @@ class GenerateConnectorContractBase(ABC):
     def test_answer_grounded_in_passage(self) -> None:
         """Not-a-stub proof: the answer contains a distinctive substring of the
         relevant passage, so it is drawn from the source rather than invented."""
-        result = self._answer(self.sample_query(), self.sample_passages())
+        passages = self.sample_passages()
+        cited = [p for i, p in enumerate(passages) if str(p.get("doc_id", str(i))) == self.expected_citation_doc_id()]
+        assert cited, "expected_citation_doc_id is not among sample_passages"
+        assert self.expected_answer_substring() in str(cited[0].get("text", "")), (
+            "expected_answer_substring must occur in the expected-citation passage's text"
+        )
+        result = self._answer(self.sample_query(), passages)
         assert self.expected_answer_substring() in result["answer"]
 
     def test_empty_passages_returns_empty(self) -> None:

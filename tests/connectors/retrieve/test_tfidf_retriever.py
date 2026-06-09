@@ -1,11 +1,13 @@
-"""Contract test for :class:`Bm25sRetriever`.
+"""Contract test for :class:`TfidfRetriever` (zero-download CI anchor).
 
 The whole suite is inherited from :class:`RetrieveConnectorContractBase`; this
-class only wires up the five adapter methods. The corpus is crafted for a
-lexical backend: the query shares both literal tokens (``cat``, ``pet``) only
-with ``d2`` and just ``pet`` with ``d1``, so ``d2`` ranks first and ``d1`` is a
-positively scoring runner-up (the family drops zero-scored passages, so the
-score-margin assertion needs one); the distractors (mat, car) share none.
+class only wires up the five adapter methods. The corpus is crafted so the
+TF-IDF vectorizer separates the answer: the query shares both distinctive terms
+``cat``/``pet`` only with ``d2`` and just ``pet`` with ``d1`` (the embedder
+drops tokens of length <= 2, so short stop-ish words do not muddy the vectors),
+so ``d2`` ranks first and ``d1`` is a positively scoring runner-up (the family
+drops zero-scored passages, so the score-margin assertion needs one); the
+distractors share none.
 """
 
 from __future__ import annotations
@@ -13,18 +15,18 @@ from __future__ import annotations
 from typing import Any, Dict, List, Type
 
 from rag_integration.feature_groups.connectors.retrieve.base import BaseRetrieveConnector
-from rag_integration.feature_groups.connectors.retrieve.bm25s_retriever import Bm25sRetriever
+from rag_integration.feature_groups.connectors.retrieve.tfidf_retriever import TfidfRetriever
 from tests.connectors.retrieve.retrieve_contract import RetrieveConnectorContractBase
 
 
-class TestBm25sRetriever(RetrieveConnectorContractBase):
+class TestTfidfRetriever(RetrieveConnectorContractBase):
     @classmethod
     def connector_class(cls) -> Type[BaseRetrieveConnector]:
-        return Bm25sRetriever
+        return TfidfRetriever
 
     @classmethod
     def backend_value(cls) -> str:
-        return "bm25s"
+        return "tfidf"
 
     @classmethod
     def sample_corpus(cls) -> List[Dict[str, Any]]:

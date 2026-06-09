@@ -17,7 +17,9 @@ class Bm25sRetriever(BaseRetrieveConnector):
 
     Selected with ``retrieve_backend="bm25s"``. Builds an in-memory BM25 index
     per call (the corpus is per-call), so there is no shared state to cache and
-    repeated calls are idempotent.
+    repeated calls are idempotent. Family rule: at most ``top_k`` passages come
+    back and only those scoring positively, so a degenerate query (empty, or
+    all out-of-vocabulary) yields no passages.
     """
 
     RETRIEVE_BACKENDS = {
@@ -55,4 +57,9 @@ class Bm25sRetriever(BaseRetrieveConnector):
         # cast below stays valid.
         indices, scores = retriever.retrieve(query_tokens, k=top_k, show_progress=False)
 
-        return [(int(indices[0][rank]), float(scores[0][rank])) for rank in range(top_k)]
+        pairs = [(int(indices[0][rank]), float(scores[0][rank])) for rank in range(top_k)]
+        # Family rule: only positively scoring passages are returned. Without
+        # this filter a degenerate query (empty, or all out-of-vocabulary)
+        # would pad the result with top_k zero-scored passages in arbitrary
+        # order instead of returning nothing.
+        return [(idx, score) for idx, score in pairs if score > 0.0]

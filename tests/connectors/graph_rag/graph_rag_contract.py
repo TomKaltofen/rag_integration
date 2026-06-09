@@ -11,6 +11,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type
 
+import pytest
+
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -72,16 +74,8 @@ class GraphRagConnectorContractBase(ABC):
         cls, query: str, nodes: List[Dict[str, Any]], edges: List[List[str]], top_k: int
     ) -> List[Dict[str, Any]]:
         connector = cls.connector_class()
-        options = Options(
-            context={
-                connector.GRAPH_BACKEND: cls.backend_value(),
-                connector.QUERY_TEXT: query,
-                connector.NODES: nodes,
-                connector.EDGES: edges,
-                connector.TOP_K: top_k,
-            }
-        )
-        return connector._retrieve(query, nodes, options, top_k)
+        edge_pairs = [(str(a), str(b)) for a, b in edges]
+        return connector._retrieve(query, nodes, edge_pairs, top_k)
 
     @classmethod
     def _run_all(
@@ -196,6 +190,19 @@ class GraphRagConnectorContractBase(ABC):
         returned = [p["doc_id"] for p in passages]
         assert len(returned) == len(set(returned))
         assert set(returned) == {str(n["doc_id"]) for n in nodes}
+
+    def test_top_k_respected(self) -> None:
+        passages = self._passages(self.sample_query(), self.sample_nodes(), self.sample_edges(), top_k=2)
+        assert len(passages) == 2
+        assert passages[0]["doc_id"] == self.expected_top_doc_id()
+
+    def test_duplicate_doc_ids_rejected(self) -> None:
+        """Duplicate doc_ids make edges ambiguous; the base must refuse them loudly
+        instead of silently last-wins overwriting the doc_id -> index map."""
+        nodes = self.sample_nodes()
+        duplicated = nodes + [{"doc_id": nodes[0]["doc_id"], "text": "an unrelated duplicate"}]
+        with pytest.raises(ValueError, match="duplicate doc_id"):
+            self._passages(self.sample_query(), duplicated, self.sample_edges(), top_k=len(duplicated))
 
     def test_top_k_clamped_to_nodes(self) -> None:
         nodes = self.sample_nodes()

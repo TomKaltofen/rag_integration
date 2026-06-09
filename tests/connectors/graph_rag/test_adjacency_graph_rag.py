@@ -1,32 +1,29 @@
-"""Contract test for :class:`NetworkxGraphRag` (canonical networkx backend).
+"""Contract test for :class:`AdjacencyGraphRag` (zero-download CI anchor).
 
-Skipped cleanly when the ``graph`` extra (networkx) is not installed; the
-stdlib-only :class:`AdjacencyGraphRag` test is the family's zero-download CI
-anchor.
+Inherits the whole graph_rag contract suite, including the graph not-a-stub
+proof: a zero-overlap node connected to the relevant node must outscore an
+equally non-overlapping isolated node, purely because of the edge. The fixture
+is the same shape as the networkx backend's, so the proof holds for this
+engine-free adjacency implementation too.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Type
 
-import pytest
-
+from rag_integration.feature_groups.connectors.graph_rag.adjacency_graph_rag import AdjacencyGraphRag
 from rag_integration.feature_groups.connectors.graph_rag.base import BaseGraphRagConnector
-from rag_integration.feature_groups.connectors.graph_rag.networkx_graph_rag import NetworkxGraphRag
 from tests.connectors.graph_rag.graph_rag_contract import GraphRagConnectorContractBase
 
-# Clean skip (not an error) when the `graph` extra is not installed.
-pytest.importorskip("networkx")
 
-
-class TestNetworkxGraphRag(GraphRagConnectorContractBase):
+class TestAdjacencyGraphRag(GraphRagConnectorContractBase):
     @classmethod
     def connector_class(cls) -> Type[BaseGraphRagConnector]:
-        return NetworkxGraphRag
+        return AdjacencyGraphRag
 
     @classmethod
     def backend_value(cls) -> str:
-        return "networkx"
+        return "adjacency"
 
     @classmethod
     def sample_nodes(cls) -> List[Dict[str, Any]]:

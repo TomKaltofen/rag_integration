@@ -37,3 +37,12 @@ class TestExtractiveResponder(GenerateConnectorContractBase):
     @classmethod
     def expected_answer_substring(cls) -> str:
         return "fresh water"
+
+    # -- Backend-specific proof: no invented answers ---------------------------
+
+    def test_no_relevant_sentence_returns_empty(self) -> None:
+        """Passages present but no sentence shares a query token: the responder
+        returns an empty answer with no citations (it does not invent an answer),
+        exercising the ``best_score == 0`` path."""
+        result = self._answer("zzz nonmatching query", self.sample_passages())
+        assert result == {"answer": "", "citations": []}
