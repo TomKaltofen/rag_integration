@@ -5,19 +5,16 @@ Second concrete for the ``generate`` family: zero-download, zero-dependency
 a single best sentence cited to one passage, this backend selects the top-N
 query-relevant sentences *across* passages, joins them into a fixed template,
 and cites **every** passage it drew from (multi-citation). Grounded by
-construction: the answer is composed only of verbatim source sentences and each
-contributing passage is cited.
+construction: the answer is a fixed lead-in plus verbatim source sentences, and
+each contributing passage is cited.
 """
 
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List, Tuple
 
+from rag_integration.feature_groups.connectors.generate._text import SENTENCE_RE, tokenize
 from rag_integration.feature_groups.connectors.generate.base import BaseGenerateConnector
-
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
-_SENTENCE_RE = re.compile(r"[^.!?]+[.!?]?")
 
 # Fixed lead-in the selected sentences are joined onto. The answer is this
 # template plus verbatim source sentences, so it stays grounded.
@@ -36,6 +33,11 @@ class TemplateResponder(BaseGenerateConnector):
     answer text, and citation order are all stable and deterministic. If no
     sentence shares a token with the query, the answer is empty with no
     citations (the responder does not invent an answer).
+
+    Baseline limitations (shared with :class:`ExtractiveResponder` via the same
+    tokenizer and sentence splitter): English/ASCII-only matching and
+    punctuation-based splitting. There is no stopword handling, so sentences
+    echoing the question's function words can outrank the substantive answer.
     """
 
     # How many sentences the answer may draw together. A handful is enough to
@@ -52,24 +54,20 @@ class TemplateResponder(BaseGenerateConnector):
         BaseGenerateConnector.PASSAGES: {"explanation": "Supporting passages: a list of {doc_id, text} dicts"},
     }
 
-    @staticmethod
-    def _tokenize(text: str) -> set[str]:
-        return set(_TOKEN_RE.findall(text.lower()))
-
     @classmethod
     def _generate(cls, query: str, passages: List[Dict[str, Any]]) -> Tuple[str, List[str]]:
-        query_tokens = cls._tokenize(query)
+        query_tokens = tokenize(query)
 
         # (score, passage_index, sentence_index, sentence, doc_id) for every
         # sentence that shares at least one distinct query token.
         scored: List[Tuple[int, int, int, str, str]] = []
         for passage_index, passage in enumerate(passages):
             doc_id = str(passage.get("doc_id", str(passage_index)))
-            for sentence_index, raw_sentence in enumerate(_SENTENCE_RE.findall(str(passage.get("text", "")))):
+            for sentence_index, raw_sentence in enumerate(SENTENCE_RE.findall(str(passage.get("text", "")))):
                 sentence = raw_sentence.strip()
                 if not sentence:
                     continue
-                score = len(query_tokens & cls._tokenize(sentence))
+                score = len(query_tokens & tokenize(sentence))
                 if score > 0:
                     scored.append((score, passage_index, sentence_index, sentence, doc_id))
 

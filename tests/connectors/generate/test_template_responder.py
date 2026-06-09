@@ -56,16 +56,17 @@ class TestTemplateResponder(GenerateConnectorContractBase):
         assert len(result["citations"]) > 1, "template responder must cite every contributing passage"
 
     def test_answer_uses_fixed_template_and_cited_sources(self) -> None:
-        """The answer is the fixed template lead-in followed by verbatim source
-        sentences: it starts with the template prefix, and the body is built
-        only from the cited passages' text (nothing invented)."""
-        passages = self.sample_passages()
-        result = self._answer(self.sample_query(), passages)
-        assert result["answer"].startswith("Based on the retrieved passages: ")
-        cited_text = " ".join(p["text"] for p in passages if p["doc_id"] in result["citations"])
-        for sentence in ("A cat needs fresh water every day", "Good cat food keeps a cat strong"):
-            assert sentence in result["answer"]
-            assert sentence in cited_text
+        """The answer is exactly the fixed template lead-in followed by the
+        deterministic best-first sentence selection, verbatim. An exact-equality
+        check on the residual body, so no invented text can sneak in."""
+        result = self._answer(self.sample_query(), self.sample_passages())
+        prefix = "Based on the retrieved passages: "
+        assert result["answer"].startswith(prefix)
+        body = result["answer"].removeprefix(prefix)
+        # Score 2 sentences first (passage order: d1 before d2), then score 1.
+        assert body == (
+            "A cat needs fresh water every day. Good cat food keeps a cat strong. The cat also needs a clean box."
+        )
 
     def test_no_relevant_sentence_returns_empty(self) -> None:
         """Passages present but no sentence shares a query token: the responder
