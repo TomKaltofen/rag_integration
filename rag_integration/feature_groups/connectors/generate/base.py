@@ -123,6 +123,13 @@ class BaseGenerateConnector(FeatureGroup):
             return {"answer": "", "citations": []}
         answer, citations = cls._generate(query, passages)
         cls._validate_citations(citations, passages)
+        # Grounded by construction: a non-empty answer must cite its source(s),
+        # so a backend cannot return an answer with no provenance.
+        if answer.strip() and not citations:
+            raise ValueError(
+                f"{cls.__name__}._generate returned a non-empty answer with no citations; "
+                f"a grounded answer must cite at least one supplied passage."
+            )
         return {"answer": answer, "citations": citations}
 
     @classmethod

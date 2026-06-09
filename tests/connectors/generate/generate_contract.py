@@ -130,6 +130,12 @@ class GenerateConnectorContractBase(ABC):
         result = self._answer(self.sample_query(), passages)
         assert set(result["citations"]) <= known
 
+    def test_nonempty_answer_is_cited(self) -> None:
+        """Grounded by construction: a non-empty answer must cite >=1 passage."""
+        result = self._answer(self.sample_query(), self.sample_passages())
+        if result["answer"].strip():
+            assert result["citations"], "non-empty answer returned no citations"
+
     def test_relevant_passage_cited(self) -> None:
         """Not-a-stub proof: the relevant passage is cited."""
         result = self._answer(self.sample_query(), self.sample_passages())
