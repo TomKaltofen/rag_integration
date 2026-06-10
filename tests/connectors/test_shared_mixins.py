@@ -1,17 +1,5 @@
-"""Tests for the shared connector mixins and error types.
-
-These pin the cross-cutting behaviour extracted from the per-family ``base.py``
-files into ``connectors/mixins.py`` and ``connectors/errors.py``:
-
-- every connector error subclasses the built-in ``ValueError`` (so existing
-  ``pytest.raises(ValueError)`` callers keep catching them), and
-- ``top_k`` parsing is now uniform across every ``TopKMixin`` family: a
-  non-integer value is rejected as an ``InvalidOptionError`` naming the key and
-  the offending value, rather than each family surfacing a different raw
-  ``int()`` failure. Retrieve already pinned this in
-  ``test_base_validation.py``; this locks the same contract for the rerank,
-  graph_rag, and orchestrator families that the refactor unified onto it.
-"""
+"""Shared connector mixins and error types: every error is a ``ValueError``, and
+``top_k`` parsing is uniform across the ``TopKMixin`` families."""
 
 from __future__ import annotations
 

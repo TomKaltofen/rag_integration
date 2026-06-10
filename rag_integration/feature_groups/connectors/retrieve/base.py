@@ -139,14 +139,7 @@ class BaseRetrieveConnector(OptionsMixin, TopKMixin, DocCollectionMixin, Ranking
 
     @classmethod
     def _validate_ranking(cls, ranked: List[Tuple[int, float]], corpus_size: int, top_k: int) -> None:
-        """Reject a ``_rank`` result that breaks the contract.
-
-        Enforces all four :meth:`_rank` requirements: indices in range, indices
-        unique, at most ``top_k`` pairs, and scores non-increasing (best-first).
-        The shared index / ordering pass lives in ``RankingValidationMixin``;
-        the at-most-``top_k`` count is retrieve-specific (rerank and graph_rag do
-        not promise it) and stays here.
-        """
+        """Enforce the four :meth:`_rank` requirements (count is retrieve-specific; rest shared)."""
         if len(ranked) > top_k:
             raise RankingContractError(f"{cls.__name__}._rank returned {len(ranked)} pairs for top_k={top_k}.")
         cls._validate_rank_indices(ranked, corpus_size, f"a corpus of size {corpus_size}", non_increasing=True)
