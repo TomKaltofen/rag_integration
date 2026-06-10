@@ -36,10 +36,39 @@ eval = [
     "pandas>=1.3.0",
     "numpy>=1.21.0",
 ]
+# Connector families: wrap external open-source RAG tools (see issue #25).
+# retrieve family canonical backend: bm25s (MIT, numpy-only, zero-download).
+connectors = [
+    "bm25s>=0.2.0",
+]
+# rerank family pedigree backend: FlashRank (Apache-2.0, ONNX, no torch). The
+# canonical lexical reranker is pure-Python and needs no extra; this adds the
+# neural cross-encoder backend (model downloads on first use).
+rerank = [
+    "flashrank>=0.2.0",
+]
+# graph_rag family canonical backend: networkx (BSD, pure-Python, zero-download).
+graph = [
+    "networkx>=3.0",
+]
+# structured family: sqlglot (MIT, pure-Python, zero-download) parses/validates
+# the generated SQL; execution is on the stdlib sqlite3 module.
+structured = [
+    "sqlglot>=25",
+]
+# orchestrator family canonical backend: Haystack 2.x (Apache-2.0). Its in-memory
+# BM25 pipeline is zero-download (no model, no server), so it runs in CI.
+orchestrator = [
+    "haystack-ai>=2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["rag_integration*"]
+
+[tool.setuptools.package-data]
+# Ship the orchestrator R2R fixture-stub's canned-response JSON in the wheel.
+"rag_integration.feature_groups.connectors.orchestrator" = ["fixtures/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["rag_integration", "tests"]

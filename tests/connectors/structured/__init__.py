@@ -1,0 +1,1 @@
+"""structured connector-family tests."""
