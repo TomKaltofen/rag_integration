@@ -91,7 +91,14 @@ class BaseLLMResponse(FeatureGroup):
         name = str(feature_name)
         if name == "llm_response":
             return True
-        return name == cls.ANSWER_KEY and options.get(cls.QUERY) is not None
+        if name != cls.ANSWER_KEY:
+            return False
+        # Yield to an explicit generate-connector backend: with mixed options
+        # (e.g. a half-finished migration) the connector wins instead of both
+        # groups claiming the request.
+        if options.get("generate_backend") is not None:
+            return False
+        return options.get(cls.QUERY) is not None
 
     def input_features(self, options: Options, feature_name: FeatureName) -> None:
         """Root feature: no input features."""

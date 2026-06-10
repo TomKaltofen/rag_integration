@@ -235,13 +235,20 @@ the seam between them is pinned down in three ways (issue #36):
   `retrieval` stage serves the same search over a pre-built on-disk index. The
   `retrieve` family thus has lexical (`bm25s`, `tfidf`) and dense (`faiss`)
   backends under one contract.
-- **Same row shape, same feature name.** A connector and the corresponding
-  stage emit the same passage / answer row shape under the same canonical
-  feature name: the `retrieval` stage also serves `retrieved_passages`
-  (`[{doc_id, text, score, rank}]`, score higher-is-better) when its
-  `index_path` option is present, and the `llm_response` stage also serves
+- **Same row shape, same feature name, same rules.** A connector and the
+  corresponding stage emit the same passage / answer row shape under the same
+  canonical feature name: the `retrieval` stage also serves
+  `retrieved_passages` (`[{doc_id, text, score, rank}]`) when its `index_path`
+  option is present, and the `llm_response` stage also serves
   `generated_answer` (`{answer, citations}`) when its `query` option is
-  present. A downstream feature is agnostic to which produced it. Verified by
+  present. The stage's passage `score` is the cosine similarity (the repo's
+  embedders are unit-normalized, so FAISS's squared L2 converts exactly), the
+  same scale the dense connector emits, and the family's only-positive-scores
+  rule applies on both paths, so a no-match query yields no passages either
+  way. If a request carries an explicit connector selector
+  (`retrieve_backend` / `generate_backend`), the stage yields and the
+  connector serves it. A downstream feature is agnostic to which produced it.
+  Verified by
   [`tests/integration/test_stage_connector_parity.py`](../tests/integration/test_stage_connector_parity.py).
 - **Migration is an option swap, not a pipeline rewrite.** Moving between a
   stage and a connector (either direction) keeps the requested feature name

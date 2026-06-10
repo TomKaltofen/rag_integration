@@ -105,7 +105,14 @@ class BaseRetriever(FeatureGroup):
         name = str(feature_name)
         if name == "retrieved":
             return True
-        return name == cls.PASSAGES_KEY and options.get(cls.INDEX_PATH) is not None
+        if name != cls.PASSAGES_KEY:
+            return False
+        # Yield to an explicit retrieve-connector backend: with mixed options
+        # (e.g. a half-finished migration) the connector wins instead of both
+        # groups claiming the request.
+        if options.get("retrieve_backend") is not None:
+            return False
+        return options.get(cls.INDEX_PATH) is not None
 
     def input_features(self, options: Options, feature_name: FeatureName) -> None:
         """Root feature: no input features."""
@@ -164,16 +171,25 @@ class BaseRetriever(FeatureGroup):
         """
         ...
 
+    # Cosine scores within this margin of zero are float32 noise around
+    # orthogonality (a no-match hit), not relevance; the family rule drops them.
+    _SCORE_EPSILON = 1e-6
+
     @classmethod
     def _to_passages(cls, results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Convert a :meth:`_search` result into the canonical ranked-passage shape.
 
-        The shape is the retrieve connector family's contract:
-        ``[{doc_id, text, score, rank}]``, best first. FAISS distances are
-        lower-is-better, so ``score`` is ``1 / (1 + distance)``: positive,
-        monotone, and higher-is-more-relevant. Without metadata the ``doc_id``
-        falls back to the index position (mirroring the connector family's
-        positional fallback) and ``text`` to ``""``.
+        Shape and rules are the retrieve connector family's contract:
+        ``[{doc_id, text, score, rank}]``, best first, only positively scoring
+        passages. All of the repo's embedders L2-normalize, so the squared L2
+        distance FAISS returns relates to cosine as ``cos = 1 - distance / 2``;
+        ``score`` is that cosine, the same scale the dense retrieve connector
+        emits, and the positive-score filter drops no-match hits exactly as the
+        family does (an index built from non-normalized vectors sees its
+        out-of-range hits filtered too; the raw ``distances`` stay available
+        unfiltered in the row). A blank or missing ``doc_id`` falls back to the
+        FAISS index position (mirroring the family's positional fallback) and a
+        missing ``text`` to ``""``.
         """
         indices = results.get("indices", [])
         distances = results.get("distances", [])
@@ -181,18 +197,22 @@ class BaseRetriever(FeatureGroup):
         doc_ids = results.get("doc_ids", [])
 
         passages: List[Dict[str, Any]] = []
-        for rank, distance in enumerate(distances):
-            if rank < len(doc_ids):
-                doc_id = str(doc_ids[rank])
+        for i, distance in enumerate(distances):
+            score = 1.0 - float(distance) / 2.0
+            if score <= cls._SCORE_EPSILON:
+                continue
+            raw_doc_id = doc_ids[i] if i < len(doc_ids) else None
+            if raw_doc_id is not None and str(raw_doc_id) != "":
+                doc_id = str(raw_doc_id)
             else:
-                doc_id = str(indices[rank]) if rank < len(indices) else str(rank)
-            text = str(texts[rank]) if rank < len(texts) else ""
+                doc_id = str(indices[i]) if i < len(indices) else str(i)
+            text = str(texts[i]) if i < len(texts) else ""
             passages.append(
                 {
                     "doc_id": doc_id,
                     "text": text,
-                    "score": 1.0 / (1.0 + float(distance)),
-                    "rank": rank,
+                    "score": score,
+                    "rank": len(passages),
                 }
             )
         return passages

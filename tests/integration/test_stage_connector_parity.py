@@ -20,6 +20,7 @@ from typing import Any, Dict, List
 
 import faiss
 import numpy as np
+import pytest
 
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
 from mloda.provider import FeatureGroup
@@ -125,6 +126,21 @@ class TestCanonicalFeatureNames:
         assert BaseRetriever.PASSAGES_KEY == BaseRetrieveConnector.ROOT_FEATURE_NAME
         assert BaseLLMResponse.ANSWER_KEY == BaseGenerateConnector.ROOT_FEATURE_NAME
 
+    def test_stage_yield_gates_match_connector_selector_keys(self) -> None:
+        """The selector literals the stage gates yield on must stay the family selectors."""
+        assert BaseRetrieveConnector.RETRIEVE_BACKEND == "retrieve_backend"
+        assert BaseGenerateConnector.GENERATE_BACKEND == "generate_backend"
+
+    def test_stage_yields_canonical_name_to_explicit_connector_backend(self) -> None:
+        """With mixed options (half-finished migration) only the connector claims the request."""
+        mixed_retrieve = Options(context={"index_path": "some/index.faiss", "retrieve_backend": "faiss"})
+        assert FaissRetriever.match_feature_group_criteria(BaseRetriever.PASSAGES_KEY, mixed_retrieve) is False
+        assert FaissDenseRetriever.match_feature_group_criteria(BaseRetrieveConnector.ROOT_FEATURE_NAME, mixed_retrieve)
+
+        mixed_generate = Options(context={"query": "q", "llm_method": "stub", "generate_backend": "extractive"})
+        assert _StubLLMResponse.match_feature_group_criteria(BaseLLMResponse.ANSWER_KEY, mixed_generate) is False
+        assert ExtractiveResponder.match_feature_group_criteria(BaseGenerateConnector.ROOT_FEATURE_NAME, mixed_generate)
+
 
 class TestRetrieveSeamParity:
     def test_stage_and_connector_emit_same_passage_rows(self, tmp_path: Path) -> None:
@@ -161,10 +177,38 @@ class TestRetrieveSeamParity:
         _assert_passage_shape(connector_passages)
 
         # Same embedder, same vectors: both paths must rank the same documents
-        # in the same order (scores differ in scale: cosine vs 1/(1+L2)).
+        # in the same order with the same cosine scores (the stage converts the
+        # squared L2 distance over unit vectors back to cosine).
         assert [p["doc_id"] for p in stage_passages] == [p["doc_id"] for p in connector_passages]
         assert [p["text"] for p in stage_passages] == [p["text"] for p in connector_passages]
+        for stage_passage, connector_passage in zip(stage_passages, connector_passages):
+            assert stage_passage["score"] == pytest.approx(connector_passage["score"], abs=1e-5)
         assert stage_passages[0]["doc_id"] == "d2"
+
+    def test_no_match_query_returns_empty_on_both_paths(self, tmp_path: Path) -> None:
+        """Family rule parity: a query relevant to nothing yields no passages
+        from the connector AND from the stage (no fabricated-positive scores)."""
+        index_path, metadata_path = _build_stage_index(tmp_path)
+
+        stage_feature = Feature(
+            BaseRetriever.PASSAGES_KEY,
+            options=Options(
+                context={
+                    "index_path": index_path,
+                    "metadata_path": metadata_path,
+                    "query_text": "zzzz qqqq",
+                    "embedding_method": "hash",
+                    "top_k": TOP_K,
+                }
+            ),
+        )
+        stage_passages = _run_one(stage_feature, {FaissRetriever}, BaseRetriever.PASSAGES_KEY)
+
+        connector = FaissDenseRetriever()
+        connector_passages = connector._retrieve("zzzz qqqq", CORPUS, TOP_K)
+
+        assert stage_passages == []
+        assert connector_passages == []
 
 
 class TestGenerateSeamParity:
