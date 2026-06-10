@@ -124,15 +124,15 @@ feature = Feature(
 ## Connector families
 
 Alongside the build-your-own stage pipeline, the `connectors/` package wraps
-whole external open-source RAG tools under one mloda surface, organized into
-families by query-contract shape (see issue #25 for the taxonomy and the
-backend-selection rationale). Each family is a thin `Base<Family>Connector`
-FeatureGroup plus one or more concrete backends, with an inheritable
-contract-test suite so a new backend's test is a handful of adapter methods.
+whole external open-source RAG tools under one mloda surface, organized into six
+families by query-contract shape (retrieve, rerank, generate, graph_rag,
+structured, orchestrator). You swap backends by changing options, not by
+rewriting a pipeline.
 
-The first family is `retrieve` (`query_text + corpus + top_k -> ranked
-passages`). Its canonical backend is `Bm25sRetriever` (BM25 lexical retrieval
-via `bm25s`): zero-download, deterministic, MIT/numpy-only.
+See [`feature_groups/connectors/README.md`](rag_integration/feature_groups/connectors/README.md)
+for the family map (per-family contract, backends, no-Docker concrete, and
+pedigree), runnable examples, and links to the contract suites. The design
+rationale is in [`docs/rag-connector-base-classes.md`](docs/rag-connector-base-classes.md).
 
 ```python
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
@@ -160,65 +160,8 @@ results = mlodaAPI.run_all(
 )
 ```
 
-A second backend, `TfidfRetriever` (`retrieve_backend="tfidf"`), ranks the same
-corpus by TF-IDF cosine similarity (a vector-space lexical counterpart to the
-probabilistic `bm25s`): it vectorizes the corpus and query with the repo's
-deterministic TF-IDF embedder and needs no extra dependency, so it is also
-zero-download and a CI anchor.
-
-Install the family's backend with `uv sync --extra connectors`.
-
-The `rerank` family (`query_text + candidates + top_k -> reordered passages`)
-reorders already-retrieved candidates. Its canonical backend is
-`LexicalReranker` (`rerank_backend="lexical"`): pure-Python token overlap,
-zero-download and deterministic. `FlashRankReranker` (`rerank_backend="flashrank"`,
-`uv sync --extra rerank`) adds a real ONNX cross-encoder; its model downloads on
-first use, so its test runs locally and is skipped on CI.
-
-The `generate` family (`query_text + passages -> answer + citations`) produces a
-grounded answer from supporting passages. Its canonical backend is
-`ExtractiveResponder` (`generate_backend="extractive"`): pure-Python sentence
-extraction, zero-download and deterministic, and grounded by construction (every
-citation is one of the supplied passages). A second backend, `TemplateResponder`
-(`generate_backend="template"`), selects the top query-relevant sentences across
-passages, joins them into a fixed template, and cites every passage it drew from
-(multi-citation, vs the extractive responder's single citation); it is likewise
-pure-Python, zero-download, and grounded by construction. LLM-backed generators
-are pedigree backends for later.
-
-The `graph_rag` family (`query_text + nodes + edges + top_k -> ranked passages`)
-scores nodes by query overlap plus a one-hop neighbour bonus: a passage
-connected to a relevant one is surfaced even with no query-term overlap. Its canonical backend is `NetworkxGraphRag`
-(`graph_backend="networkx"`, `uv sync --extra graph`): zero-download,
-deterministic, BSD/pure-Python. A second backend, `AdjacencyGraphRag`
-(`graph_backend="adjacency"`), applies the same overlap + neighbour-bonus
-scoring over a hand-built adjacency map with no networkx (stdlib only),
-demonstrating that the family contract is not tied to one graph library.
-
-The `structured` family (`question + table -> SQL -> typed rows`) answers a
-natural-language question over a relational table. Its canonical backend is
-`RuleBasedSql` (`structured_backend="rule_based"`, `uv sync --extra structured`):
-rule-based NL->SQL executed on stdlib `sqlite3`, with `sqlglot` validating the
-generated SQL is a single top-level `SELECT` statement. Zero-download,
-deterministic, no LLM; values are always bound parameters and identifiers are
-whitelisted. A second backend, `AggregateSql` (`structured_backend="aggregate"`),
-adds aggregation intents (avg/min/max/sum over a column named in the question;
-numericness is not validated, and SQLite's coercion means e.g. `AVG` over a text
-column returns `0.0`) on top of the count/filter/list intents, reusing the same
-identifier whitelist, SQL guard, and sqlite execution.
-
-The `orchestrator` family (`query_text + corpus + top_k -> answer + documents`)
-wraps a whole external RAG framework as one connector (bring your existing
-pipeline). Its canonical backend is `HaystackOrchestrator`
-(`orchestrator_backend="haystack"`, `uv sync --extra orchestrator`): a real
-Haystack 2.x in-memory BM25 pipeline, zero-download (no model, no server) so it
-runs in CI. A second backend, `R2RFixtureOrchestrator`
-(`orchestrator_backend="r2r"`), covers a different integration mode: it models a
-server-shaped tool (R2R) over a static JSON fixture of canned responses (the
-open-kgo `rest_public` pattern), answering with honest-surface narrowing
-(surfacing only canned documents that are in the supplied corpus). No server, no
-network, zero-dependency, deterministic. Other server-shaped tools (e.g.
-RAGFlow) can follow the same fixture-stub pattern.
+Install a family's backend with `uv sync --extra connectors` (or `rerank` /
+`graph` / `structured` / `orchestrator`).
 
 ## Installation
 
