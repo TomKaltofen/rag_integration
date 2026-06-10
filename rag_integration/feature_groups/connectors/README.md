@@ -3,8 +3,10 @@
 The `connectors/` package wraps whole external open-source RAG tools under one
 mloda surface, organized into families by **query-contract shape**. Each family
 is a thin `Base<Family>Connector` FeatureGroup plus one or more concrete
-backends gated by a `<family>_backend` selector option, with an inheritable
-contract-test suite so a new backend's test is a handful of adapter methods.
+backends gated by a per-family selector option (`retrieve_backend`,
+`rerank_backend`, `generate_backend`, `graph_backend`, `structured_backend`,
+`orchestrator_backend`), with an inheritable contract-test suite so a new
+backend's test is a handful of adapter methods.
 
 This sits alongside the build-your-own stage pipeline (`../rag_pipeline/`): the
 stages let you assemble a pipeline step by step, the connectors let you drop in
@@ -20,7 +22,9 @@ and [`errors.py`](errors.py).
 
 The canonical concrete per family is the zero-download, deterministic backend
 that anchors the CI contract suite. Pedigree tags: `real-lib-inmem` (a real
-library running in-process), `fixture-stub` (deterministic stand-in, no library).
+library running in-process), `fixture-stub` (deterministic stand-in, no model
+download or server). The full survey in the design doc also uses
+`real-lib-server` and `research-prototype`.
 
 | Family | Reader contract (in -> out) | No-Docker concrete | Other backends | Pedigree of the anchor | Contract suite |
 |---|---|---|---|---|---|
@@ -37,7 +41,7 @@ library running in-process), `fixture-stub` (deterministic stand-in, no library)
 
 Holds the vector-store / lexical / late-interaction backends (FAISS, Chroma,
 bm25s, ColBERT, ...). The anchor `Bm25sRetriever` (`retrieve_backend="bm25s"`) is
-BM25 lexical retrieval via `bm25s`: zero-download, deterministic, numpy-only.
+BM25 lexical retrieval via `bm25s`: zero-download, deterministic, numpy/scipy.
 `TfidfRetriever` (`retrieve_backend="tfidf"`) ranks the same corpus by TF-IDF
 cosine similarity using the repo's deterministic embedder, also zero-download.
 
@@ -116,9 +120,10 @@ fixture-stub pattern.
 
 ## How a backend is selected
 
-Each base gates on its `<family>_backend` option in
-`match_feature_group_criteria`; backends declare disjoint selector values, so at
-most one ever claims a given `Options`. An unknown backend matches nothing. The
+Each base gates on its selector option in `match_feature_group_criteria` (named
+per family above; note `graph_rag` uses `graph_backend`, not
+`graph_rag_backend`); backends declare disjoint selector values, so at most one
+ever claims a given `Options`. An unknown backend matches nothing. The
 base owns the cross-backend contract (option extraction, validation, assembly);
 a concrete backend implements only its one ranking / generation hook.
 
