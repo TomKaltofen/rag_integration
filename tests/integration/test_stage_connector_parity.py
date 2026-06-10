@@ -1,15 +1,9 @@
 """Stage <-> connector migration-seam parity tests (issue #36).
 
-The seam: the stage pipeline (build-your-own) and the connector families
-(bring an existing tool) emit the same passage / answer row shape under the
-same canonical feature name, so a downstream feature is agnostic to which
-produced it and migration is a swap of options, not a pipeline rewrite.
-
-Verified here end to end: the FAISS ``retrieval`` stage (pre-built on-disk
-index) and the dense ``retrieve`` connector (inline corpus) answer the same
-query over the same documents with identically shaped, identically ordered
-passages; the ``llm_response`` stage and the ``generate`` connector emit the
-same answer-object shape.
+Stage and connector emit the same passage / answer row shape under the same
+canonical feature name, so migration is an option swap, not a pipeline
+rewrite. Verified end to end for retrieve (FAISS stage vs dense connector)
+and generate (llm_response stage vs extractive connector).
 """
 
 from __future__ import annotations
@@ -38,9 +32,8 @@ from rag_integration.feature_groups.rag_pipeline.retrieval.base import BaseRetri
 from rag_integration.feature_groups.rag_pipeline.retrieval.faiss_retriever import FaissRetriever
 from tests.integration.helpers import flatten_result
 
-# Crafted for the hash embedder (whitespace tokens, no punctuation): the query
-# shares two tokens with d2 and one with d1; the distractors share none, so
-# their cosine is zero and the connector family drops them.
+# Hash-embedder friendly (whitespace tokens, no punctuation): the query shares
+# two tokens with d2, one with d1, none with the distractors.
 CORPUS = [
     {"doc_id": "d0", "text": "the mat lay flat on the floor by the window"},
     {"doc_id": "d1", "text": "a dog can be a loyal and energetic pet"},
@@ -64,8 +57,7 @@ class _StubLLMResponse(BaseLLMResponse):
         options: Options,
         data_access_collection: Any = None,
     ) -> bool:
-        # Gate on the stub's own selector so this test-only group can never
-        # claim a request from an unrelated test sharing the process.
+        # Gate on the stub's selector so unrelated tests never match it.
         if options.get(cls.LLM_METHOD) != "stub":
             return False
         return bool(super().match_feature_group_criteria(feature_name, options, data_access_collection))
@@ -176,9 +168,7 @@ class TestRetrieveSeamParity:
         _assert_passage_shape(stage_passages)
         _assert_passage_shape(connector_passages)
 
-        # Same embedder, same vectors: both paths must rank the same documents
-        # in the same order with the same cosine scores (the stage converts the
-        # squared L2 distance over unit vectors back to cosine).
+        # Same vectors: same documents, same order, same cosine scores.
         assert [p["doc_id"] for p in stage_passages] == [p["doc_id"] for p in connector_passages]
         assert [p["text"] for p in stage_passages] == [p["text"] for p in connector_passages]
         for stage_passage, connector_passage in zip(stage_passages, connector_passages):
@@ -186,8 +176,7 @@ class TestRetrieveSeamParity:
         assert stage_passages[0]["doc_id"] == "d2"
 
     def test_no_match_query_returns_empty_on_both_paths(self, tmp_path: Path) -> None:
-        """Family rule parity: a query relevant to nothing yields no passages
-        from the connector AND from the stage (no fabricated-positive scores)."""
+        """A query relevant to nothing yields no passages on either path."""
         index_path, metadata_path = _build_stage_index(tmp_path)
 
         stage_feature = Feature(

@@ -30,12 +30,11 @@ class BaseLLMResponse(FeatureGroup):
 
     Output rows contain: llm_response (the generated text) and the canonical
     answer object under ANSWER_KEY (same shape as the generate connector
-    family), so a downstream feature is agnostic to which produced it.
+    family).
     """
 
-    # Mirrors BaseGenerateConnector.ROOT_FEATURE_NAME (kept as a literal here so
-    # the stage layer does not import the connectors layer; the parity test
-    # asserts the two stay equal).
+    # Mirrors BaseGenerateConnector.ROOT_FEATURE_NAME as a literal so the stage
+    # layer does not import the connectors layer; pinned by the parity test.
     ANSWER_KEY = "generated_answer"
 
     QUERY = "query"
@@ -80,22 +79,18 @@ class BaseLLMResponse(FeatureGroup):
         options: Options,
         data_access_collection: Any = None,
     ) -> bool:
-        """Match 'llm_response', or the canonical answer feature for stage options.
+        """Match 'llm_response', or ANSWER_KEY for stage options.
 
-        Serving ANSWER_KEY makes migration a pure option swap: a downstream
-        feature keeps requesting the same name whether a generate connector
-        (query_text + passages) or this stage (query + context) produces it.
-        The gate on the stage's defining option (query) keeps the two worlds
-        from both claiming one request.
+        Serving ANSWER_KEY makes migration a pure option swap. The gate on
+        query, plus yielding when an explicit generate-connector selector is
+        present, keeps the stage and the connector family from both claiming
+        one request.
         """
         name = str(feature_name)
         if name == "llm_response":
             return True
         if name != cls.ANSWER_KEY:
             return False
-        # Yield to an explicit generate-connector backend: with mixed options
-        # (e.g. a half-finished migration) the connector wins instead of both
-        # groups claiming the request.
         if options.get("generate_backend") is not None:
             return False
         return options.get(cls.QUERY) is not None
@@ -158,9 +153,8 @@ class BaseLLMResponse(FeatureGroup):
             system_prompt = cls._get_system_prompt(options)
 
             response = cls._generate(query, context, system_prompt, options)
-            # The canonical answer object mirrors the generate connector
-            # family's shape. The stage has no doc_id-tracked passages, so the
-            # citation list is honestly empty rather than fabricated.
+            # Connector-family shape; no doc_id-tracked passages, so citations
+            # stay honestly empty.
             answer = {"answer": response, "citations": []}
             return [{"llm_response": response, cls.ANSWER_KEY: answer}]
 

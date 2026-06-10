@@ -36,13 +36,11 @@ class BaseRetriever(FeatureGroup):
 
     Output rows contain: indices, distances, texts, doc_ids, and the canonical
     ranked-passage list under PASSAGES_KEY (same shape as the retrieve
-    connector family), so a downstream feature is agnostic to whether a stage
-    or a connector produced its passages.
+    connector family).
     """
 
-    # Mirrors BaseRetrieveConnector.ROOT_FEATURE_NAME (kept as a literal here so
-    # the stage layer does not import the connectors layer; the parity test
-    # asserts the two stay equal).
+    # Mirrors BaseRetrieveConnector.ROOT_FEATURE_NAME as a literal so the stage
+    # layer does not import the connectors layer; pinned by the parity test.
     PASSAGES_KEY = "retrieved_passages"
 
     TOP_K = "top_k"
@@ -94,22 +92,18 @@ class BaseRetriever(FeatureGroup):
         options: Options,
         data_access_collection: Any = None,
     ) -> bool:
-        """Match 'retrieved', or the canonical passage feature for index-backed options.
+        """Match 'retrieved', or PASSAGES_KEY for index-backed options.
 
-        Serving PASSAGES_KEY makes migration a pure option swap: a downstream
-        feature keeps requesting the same name whether a retrieve connector
-        (inline corpus) or this stage (pre-built index) produces it. The gate
-        on the stage's defining option (index_path) keeps the two worlds from
-        both claiming one request.
+        Serving PASSAGES_KEY makes migration a pure option swap. The gate on
+        index_path, plus yielding when an explicit retrieve-connector selector
+        is present, keeps the stage and the connector family from both
+        claiming one request.
         """
         name = str(feature_name)
         if name == "retrieved":
             return True
         if name != cls.PASSAGES_KEY:
             return False
-        # Yield to an explicit retrieve-connector backend: with mixed options
-        # (e.g. a half-finished migration) the connector wins instead of both
-        # groups claiming the request.
         if options.get("retrieve_backend") is not None:
             return False
         return options.get(cls.INDEX_PATH) is not None
@@ -171,25 +165,18 @@ class BaseRetriever(FeatureGroup):
         """
         ...
 
-    # Cosine scores within this margin of zero are float32 noise around
-    # orthogonality (a no-match hit), not relevance; the family rule drops them.
+    # Cosine scores this close to zero are float32 noise around orthogonality.
     _SCORE_EPSILON = 1e-6
 
     @classmethod
     def _to_passages(cls, results: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Convert a :meth:`_search` result into the canonical ranked-passage shape.
+        """Convert a :meth:`_search` result into the retrieve family's contract.
 
-        Shape and rules are the retrieve connector family's contract:
-        ``[{doc_id, text, score, rank}]``, best first, only positively scoring
-        passages. All of the repo's embedders L2-normalize, so the squared L2
-        distance FAISS returns relates to cosine as ``cos = 1 - distance / 2``;
-        ``score`` is that cosine, the same scale the dense retrieve connector
-        emits, and the positive-score filter drops no-match hits exactly as the
-        family does (an index built from non-normalized vectors sees its
-        out-of-range hits filtered too; the raw ``distances`` stay available
-        unfiltered in the row). A blank or missing ``doc_id`` falls back to the
-        FAISS index position (mirroring the family's positional fallback) and a
-        missing ``text`` to ``""``.
+        ``[{doc_id, text, score, rank}]``, best first, only positive scores.
+        The repo's embedders L2-normalize, so ``score = 1 - distance / 2`` is
+        the cosine, the same scale the dense connector emits; raw distances
+        stay unfiltered in the row. Blank or missing ``doc_id`` falls back to
+        the index position, missing ``text`` to ``""``.
         """
         indices = results.get("indices", [])
         distances = results.get("distances", [])

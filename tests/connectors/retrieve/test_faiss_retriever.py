@@ -1,12 +1,9 @@
 """Contract test for :class:`FaissDenseRetriever` (canonical dense backend).
 
-The whole suite is inherited from :class:`RetrieveConnectorContractBase`; this
-class only wires up the five adapter methods. The corpus is crafted for the
-hash embedder, which splits on whitespace without stripping punctuation: the
-overlapping tokens are exact whitespace tokens (no trailing periods), the query
-shares ``cat``/``pet`` with ``d2`` and just ``pet`` with ``d1`` (a positively
-scoring runner-up for the score-margin assertion), and the distractors share no
-token with the query, so their cosine is zero and the family drops them.
+The suite is inherited from :class:`RetrieveConnectorContractBase`. The corpus
+uses exact whitespace tokens (the hash embedder does not strip punctuation):
+the query shares two tokens with ``d2``, one with ``d1``, none with the
+distractors.
 """
 
 from __future__ import annotations
