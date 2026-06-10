@@ -1,0 +1,22 @@
+{
+  "_comment": "Canned R2R-style retrieval+RAG responses, keyed by lowercased query. Each entry mirrors the shape an R2R server's /rag endpoint returns: a generated answer, the doc the answer is drawn from (answer_doc_id), and the ranked source documents (doc_id + relevance score). The stub backend narrows these to the documents present in the supplied corpus, so nothing is fabricated; the answer is surfaced only when its answer_doc_id is among the surfaced documents, i.e. it survives both corpus narrowing and top_k truncation (otherwise the result is retrieve-only). A query absent here yields no canned response (honest surface).",
+  "responses": {
+    "cat pet": {
+      "answer": "A cat is an independent and curious pet.",
+      "answer_doc_id": "d1",
+      "documents": [
+        {"doc_id": "d1", "score": 0.91},
+        {"doc_id": "d2", "score": 0.14},
+        {"doc_id": "d0", "score": 0.07}
+      ]
+    },
+    "loyal companion": {
+      "answer": "Dogs are loyal and energetic companions.",
+      "answer_doc_id": "d2",
+      "documents": [
+        {"doc_id": "d1", "score": 0.62},
+        {"doc_id": "d2", "score": 0.58}
+      ]
+    }
+  }
+}

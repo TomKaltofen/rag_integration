@@ -1,0 +1,44 @@
+"""Contract test for :class:`Bm25sRetriever`.
+
+The whole suite is inherited from :class:`RetrieveConnectorContractBase`; this
+class only wires up the five adapter methods. The corpus is crafted for a
+lexical backend: the query shares both literal tokens (``cat``, ``pet``) only
+with ``d2`` and just ``pet`` with ``d1``, so ``d2`` ranks first and ``d1`` is a
+positively scoring runner-up (the family drops zero-scored passages, so the
+score-margin assertion needs one); the distractors (mat, car) share none.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, Type
+
+from rag_integration.feature_groups.connectors.retrieve.base import BaseRetrieveConnector
+from rag_integration.feature_groups.connectors.retrieve.bm25s_retriever import Bm25sRetriever
+from tests.connectors.retrieve.retrieve_contract import RetrieveConnectorContractBase
+
+
+class TestBm25sRetriever(RetrieveConnectorContractBase):
+    @classmethod
+    def connector_class(cls) -> Type[BaseRetrieveConnector]:
+        return Bm25sRetriever
+
+    @classmethod
+    def backend_value(cls) -> str:
+        return "bm25s"
+
+    @classmethod
+    def sample_corpus(cls) -> List[Dict[str, Any]]:
+        return [
+            {"doc_id": "d0", "text": "The mat lay flat on the floor by the window."},
+            {"doc_id": "d1", "text": "A dog can be a loyal and energetic pet."},
+            {"doc_id": "d2", "text": "A cat is an independent and curious pet."},
+            {"doc_id": "d3", "text": "Cars need regular engine oil and maintenance."},
+        ]
+
+    @classmethod
+    def sample_query(cls) -> str:
+        return "cat pet"
+
+    @classmethod
+    def expected_top_doc_id(cls) -> str:
+        return "d2"
