@@ -92,6 +92,15 @@ def test_self_loop_triples_yield_no_edge() -> None:
     graph = _build([["a", "is", "a"]])
     assert graph["edges"] == []
     assert [node["doc_id"] for node in graph["nodes"]] == ["a"]
+    # The self-loop sentence appears once, not once per entity slot.
+    assert graph["nodes"][0]["text"] == "a a is a"
+
+
+def test_repeated_triple_contributes_its_sentence_once() -> None:
+    graph = _build([["a", "likes", "b"], ["a", "likes", "b"]])
+    text_by_id = {node["doc_id"]: node["text"] for node in graph["nodes"]}
+    assert text_by_id["a"] == "a a likes b"
+    assert text_by_id["b"] == "b a likes b"
 
 
 def test_empty_triples_yield_empty_graph() -> None:

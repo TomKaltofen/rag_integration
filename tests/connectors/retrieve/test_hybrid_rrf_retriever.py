@@ -58,6 +58,28 @@ class TestHybridRrfRetriever(RetrieveConnectorContractBase):
 
         assert HybridRrfRetriever._rank(query, texts, len(texts)) == expected
 
+    def test_one_component_empty_other_carries_the_ranking(self) -> None:
+        """An all-stopwords corpus blanks the lexical component (empty BM25
+        vocabulary); the fused result is the dense ranking alone and still
+        honors only-positive scores and best-first order."""
+        corpus = [
+            {"doc_id": "s0", "text": "the and of"},
+            {"doc_id": "s1", "text": "the of by"},
+        ]
+        texts = [str(doc["text"]) for doc in corpus]
+        query = "the of by"
+
+        lexical, dense = HybridRrfRetriever._COMPONENTS
+        assert lexical._rank(query, texts, len(texts)) == []
+        dense_indices = [idx for idx, _ in dense._rank(query, texts, len(texts))]
+        assert dense_indices, "fixture must keep the dense component non-empty"
+
+        fused = HybridRrfRetriever._rank(query, texts, len(texts))
+        assert [idx for idx, _ in fused] == dense_indices
+        scores = [score for _, score in fused]
+        assert all(score > 0.0 for score in scores)
+        assert scores == sorted(scores, reverse=True)
+
     def test_doc_found_by_one_component_still_surfaces(self) -> None:
         """Union semantics: a doc only one component scores positively is kept."""
         corpus = self.sample_corpus()

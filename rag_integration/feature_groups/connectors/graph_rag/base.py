@@ -35,7 +35,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Tuple, Type, Union
 
-from mloda.provider import DataCreator, FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import DataCreator, DefaultOptionKeys, FeatureGroup, ComputeFramework, FeatureSet
 from mloda.user import Feature, Options, FeatureName
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -67,6 +67,11 @@ class BaseGraphRagConnector(OptionsMixin, TopKMixin, DocCollectionMixin, Ranking
     NODES = "nodes"
     EDGES = "edges"
     GRAPH_SOURCE = "graph_source"
+
+    # The family's own option keys: kept off the graph-source feature in
+    # input_features (forwarding excludes them; the merge protection below
+    # stops the engine re-adding them from parent group options).
+    FAMILY_OPTION_KEYS = frozenset({GRAPH_BACKEND, GRAPH_SOURCE, QUERY_TEXT, TopKMixin.TOP_K, NODES, EDGES})
 
     # Filled per concrete; empty on the base so it never matches.
     GRAPH_BACKENDS: Dict[str, str] = {}
@@ -113,17 +118,22 @@ class BaseGraphRagConnector(OptionsMixin, TopKMixin, DocCollectionMixin, Ranking
         """Declare the graph-source feature as input when ``GRAPH_SOURCE`` is set.
 
         Without ``GRAPH_SOURCE`` this is a root feature (graph arrives via
-        Options). With it, the named upstream feature is the input; the parent
-        context is forwarded minus this family's own keys, so the source's
-        selector options (e.g. ``kg_backend``) reach it (only group options
-        propagate on their own, context options do not).
+        Options); ``input_data`` stays declared for that mode, the engine uses
+        whichever applies. With ``GRAPH_SOURCE``, the named upstream feature is
+        the input. Its options are the parent's group and context options minus
+        ``FAMILY_OPTION_KEYS``: context keys do not propagate on their own, so
+        the source's selector options (e.g. ``kg_backend``) are forwarded
+        explicitly, and the family keys are declared merge-protected so the
+        engine's own group-option merge cannot re-add query-specific keys to
+        the source feature.
         """
         source = options.get(self.GRAPH_SOURCE)
         if source is None:
             return None
-        own_keys = {self.GRAPH_BACKEND, self.GRAPH_SOURCE, self.QUERY_TEXT, self.TOP_K, self.NODES, self.EDGES}
-        forwarded = {key: value for key, value in options.context.items() if key not in own_keys}
-        return {Feature(str(source), options=Options(context=forwarded))}
+        forwarded_group = {key: value for key, value in options.group.items() if key not in self.FAMILY_OPTION_KEYS}
+        forwarded_context = {key: value for key, value in options.context.items() if key not in self.FAMILY_OPTION_KEYS}
+        forwarded_context[DefaultOptionKeys.feature_chainer_parser_key] = self.FAMILY_OPTION_KEYS
+        return {Feature(str(source), options=Options(group=forwarded_group, context=forwarded_context))}
 
     @classmethod
     def _graph_from_source(cls, data: Any, source_name: str) -> Dict[str, Any]:
@@ -237,10 +247,12 @@ class BaseGraphRagConnector(OptionsMixin, TopKMixin, DocCollectionMixin, Ranking
             query = cls._require_option(options, cls.QUERY_TEXT)
             source = options.get(cls.GRAPH_SOURCE)
             if source is not None:
-                if options.get(cls.NODES) is not None:
-                    raise InvalidOptionError(
-                        f"{cls.__name__} got both '{cls.GRAPH_SOURCE}' and inline '{cls.NODES}'; pass one graph only."
-                    )
+                for inline_key in (cls.NODES, cls.EDGES):
+                    if options.get(inline_key) is not None:
+                        raise InvalidOptionError(
+                            f"{cls.__name__} got both '{cls.GRAPH_SOURCE}' and inline '{inline_key}'; "
+                            f"pass one graph only."
+                        )
                 payload = cls._graph_from_source(data, str(source))
                 nodes = list(payload[cls.NODES])
                 edges = cls._resolve_edges(payload.get(cls.EDGES))

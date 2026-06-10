@@ -50,9 +50,9 @@ pipeline's `retrieval` stage runs, folded in behind this contract (cosine over
 the repo's deterministic hash embeddings, in-memory `IndexFlatIP`).
 `HybridRrfRetriever` (`retrieve_backend="hybrid_rrf"`, `--extra faiss`) fuses
 the lexical and dense rankings with reciprocal-rank fusion; the fusion
-mechanics live in the cross-cutting [`fusion.py`](fusion.py), so blending
-rankings across families (e.g. `retrieve` + `graph_rag`, by `doc_id`) reuses
-`rrf_fuse` instead of growing a new backend.
+mechanics live in the cross-cutting [`fusion.py`](fusion.py), so future
+blending of rankings across families (e.g. `retrieve` + `graph_rag`, by
+`doc_id`) reuses `rrf_fuse` instead of growing a new backend.
 
 The FAISS `retrieval` stage and this family are one world: the stage serves the
 same `retrieved_passages` shape from a pre-built on-disk index, so migrating

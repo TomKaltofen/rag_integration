@@ -135,11 +135,13 @@ class TriplesKnowledgeGraph(BaseKnowledgeGraphSource):
         sentences: Dict[str, List[str]] = {}
         for subject, predicate, obj in triples:
             sentence = f"{subject} {predicate} {obj}"
-            for entity in (subject, obj):
+            # dict.fromkeys: a self-loop contributes its sentence once, not twice.
+            for entity in dict.fromkeys((subject, obj)):
                 if entity not in sentences:
                     entities.append(entity)
                     sentences[entity] = []
-                sentences[entity].append(sentence)
+                if sentence not in sentences[entity]:
+                    sentences[entity].append(sentence)
 
         nodes = [{"doc_id": entity, "text": " ".join([entity] + sentences[entity])} for entity in entities]
 

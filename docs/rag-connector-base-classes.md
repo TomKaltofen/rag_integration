@@ -234,9 +234,9 @@ hashable keys, so it is family-agnostic (corpus indices inside `retrieve`,
 `retrieve` + `graph_rag`). The *exposure* inside a family is a thin backend:
 `HybridRrfRetriever` (`retrieve_backend="hybrid_rrf"`) fuses the `bm25s`
 lexical and `faiss` dense rankings under the unchanged `retrieve` contract.
-Cross-family blending reuses `rrf_fuse` on `doc_id`-keyed rankings instead of
-growing a new backend, because its in/out shape would no longer be any single
-family's contract.
+Cross-family blending is not built yet; when it is needed, it reuses
+`rrf_fuse` on `doc_id`-keyed rankings instead of growing a new backend,
+because its in/out shape would no longer be any single family's contract.
 
 ## Relationship to the stage pipeline (the migration seam)
 

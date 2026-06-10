@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Dict, Hashable, List, Sequence, Tuple, TypeVar
 
-from rag_integration.feature_groups.connectors.errors import InvalidOptionError
+from rag_integration.feature_groups.connectors.errors import InvalidOptionError, RankingContractError
 
 K = TypeVar("K", bound=Hashable)
 
@@ -46,7 +46,7 @@ def rrf_fuse(rankings: Sequence[Sequence[K]], top_k: int, k: int = DEFAULT_RRF_K
         seen_here: set[K] = set()
         for position, key in enumerate(ranking):
             if key in seen_here:
-                raise InvalidOptionError(f"rrf_fuse got duplicate key {key!r} inside one ranking.")
+                raise RankingContractError(f"rrf_fuse got duplicate key {key!r} inside one ranking.")
             seen_here.add(key)
             scores[key] = scores.get(key, 0.0) + 1.0 / (k + position + 1)
             if key not in first_seen:
