@@ -3,14 +3,28 @@
 This is the Phase 0 deliverable for the connector-family direction
 ([fork issue #25](https://github.com/TomKaltofen/rag_integration/issues/25)):
 the survey and design doc that justify how the families were cut. It is the
-RAG analogue of open-kgo's `docs/kg-connector-base-classes.md` (the doc whose
-labeled family map drove `open_kgo/feature_groups/kg/`).
+RAG analogue of open-kgo's family-map doc: the labeled map that drove
+`open_kgo/feature_groups/kg/` lives in `open_kgo/feature_groups/kg/README.md`
+(it in turn cites a "Version B" survey write-up that is not committed in the
+open-kgo repo). This document is the survey write-up plus the family map for the
+RAG side, in one file.
 
 The code for the six families already shipped in
 [PR #31](https://github.com/TomKaltofen/rag_integration/pull/31); this document
 is the missing artifact that explains *why those six*, records the landscape it
 was derived from, and reconciles the shipped cuts against the v0 hypothesis in
 #25.
+
+> **Status / relationship to PR #31.** The `feature_groups/connectors/` package,
+> the `tests/connectors/` suites, and every backend class named below are
+> introduced by [PR #31](https://github.com/TomKaltofen/rag_integration/pull/31),
+> not by this docs change. This doc is written to land together with (or right
+> after) #31; if you are reading it on a branch where #31 has not merged, those
+> paths resolve only on the #31 branch (`feat/orchestrator-connector-family`).
+> Everything described as "shipped" refers to what #31 ships, and the
+> "not yet wired" caveats (dense backend, migration seam) refer to follow-ups
+> [#35](https://github.com/TomKaltofen/rag_integration/issues/35) and
+> [#36](https://github.com/TomKaltofen/rag_integration/issues/36).
 
 ## Why connect instead of rebuild
 
@@ -64,10 +78,18 @@ orchestrator is opaque end-to-end.
 
 ## The landscape survey
 
-~90 open-source RAG systems, grouped by the contract cluster they fall into.
-Per system: the query contract (in -> out), the state it needs, the no-Docker
-answer, the family it maps to, and a pedigree tag
+~90 rows below, grouped by the contract cluster they fall into. Per row: the
+query contract (in -> out), the state it needs, the no-Docker answer, the family
+it maps to, and a pedigree tag
 (`real-lib-inmem` / `real-lib-server` / `fixture-stub` / `research-prototype`).
+
+Rows count tool *surfaces*, not unique repositories: a few projects appear in
+more than one family because they expose more than one contract (LangChain and
+LlamaIndex span orchestrator + generate + structured; Haystack spans
+orchestrator + generate; ColBERT spans retrieve + rerank). Distinct projects are
+roughly 80, comfortably past the >= 60 floor the Definition of Done asks for.
+A handful of entries are hosted or not strictly OSS (Cohere-rerank, Canopy);
+they are labeled as such and the count clears 60 without them.
 
 No-Docker legend: **in-mem** = runs in-process after at most a pip install
 (possibly a model download, noted); **fixture** = exercisable only via a static
@@ -103,7 +125,6 @@ fixture / REST stub; **server** = genuinely needs a running server or Docker.
 | Dify | API app query -> answer + retrieved refs | Docker stack (Postgres, Redis, vector DB) | server | orchestrator | real-lib-server |
 | Flowise | deployed flow API query -> answer | Node server; vector store; LLM keys | server | orchestrator | real-lib-server |
 | kotaemon (Cinnamon) | UI/API query -> answer + citations (GraphRAG opt) | local/server install; vector + doc store | server | orchestrator | real-lib-server |
-| Jina Reader | `GET r.jina.ai/<url>` -> clean markdown text | hosted REST API (no local index) | fixture (REST) | retrieve (ingest) | real-lib-server |
 
 ### Retrieval engines, vector stores, lexical / dense / late-interaction (-> `retrieve`)
 
@@ -251,7 +272,7 @@ flagged:
 |---|---|
 | Is `agentic` (iterative retrieve + plan loop) a distinct family? | **No.** FLARE, Self-RAG, AutoRAG, DSPy all return `query -> answer` with the loop *internal*: same opaque contract as `orchestrator`. Agentic is a backend behaviour, not a contract shape. If a future tool exposes the plan/step loop as its query surface, revisit. |
 | Does `structured` (text-to-SQL) belong here? | **Yes, kept.** `question + table -> SQL -> rows` is a contract shape no other family expresses, and it has a clean no-Docker anchor (in-mem SQLite). It is *not* a backend of `retrieve` (rows, not ranked passages). |
-| Split `orchestrator` into in-memory vs server? | **No, kept unified.** The contract is identical; in-memory vs server is a *pedigree*, handled by two backends under one family (`HaystackOrchestrator` real-lib-inmem, `R2rFixtureOrchestrator` fixture-stub), exactly the open-kgo `rest_public` pattern. |
+| Split `orchestrator` into in-memory vs server? | **No, kept unified.** The contract is identical; in-memory vs server is a *pedigree*, handled by two backends under one family (`HaystackOrchestrator` real-lib-inmem, `R2RFixtureOrchestrator` fixture-stub), exactly the open-kgo `rest_public` pattern. |
 | How much of `graph_rag` should defer to open-kgo? | Kept as its own RAG family with a self-contained node/edge contract. The synergy (consume an open-kgo KG connector as the corpus) stays an open question, not a blocker. |
 | Where do eval harnesses (RAGAS, TruLens, ...) sit? | **Out of scope** for the connector layer. They are cross-cutting, consuming `(query, answer, contexts, gt)`; they belong on top of the existing `evaluation/` module. |
 
