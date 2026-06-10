@@ -34,8 +34,16 @@ class BaseRetriever(FeatureGroup):
         - query_text: Raw text query (requires embedding_method)
         - embedding_method: Which embedder to use for query_text
 
-    Output rows contain: indices, distances, texts, doc_ids
+    Output rows contain: indices, distances, texts, doc_ids, and the canonical
+    ranked-passage list under PASSAGES_KEY (same shape as the retrieve
+    connector family), so a downstream feature is agnostic to whether a stage
+    or a connector produced its passages.
     """
+
+    # Mirrors BaseRetrieveConnector.ROOT_FEATURE_NAME (kept as a literal here so
+    # the stage layer does not import the connectors layer; the parity test
+    # asserts the two stay equal).
+    PASSAGES_KEY = "retrieved_passages"
 
     TOP_K = "top_k"
     QUERY_EMBEDDING = "query_embedding"
@@ -77,7 +85,7 @@ class BaseRetriever(FeatureGroup):
 
     @classmethod
     def input_data(cls) -> DataCreator:
-        return DataCreator({"retrieved"})
+        return DataCreator({"retrieved", cls.PASSAGES_KEY})
 
     @classmethod
     def match_feature_group_criteria(
@@ -86,8 +94,18 @@ class BaseRetriever(FeatureGroup):
         options: Options,
         data_access_collection: Any = None,
     ) -> bool:
-        """Match features named 'retrieved' exactly."""
-        return feature_name == "retrieved"
+        """Match 'retrieved', or the canonical passage feature for index-backed options.
+
+        Serving PASSAGES_KEY makes migration a pure option swap: a downstream
+        feature keeps requesting the same name whether a retrieve connector
+        (inline corpus) or this stage (pre-built index) produces it. The gate
+        on the stage's defining option (index_path) keeps the two worlds from
+        both claiming one request.
+        """
+        name = str(feature_name)
+        if name == "retrieved":
+            return True
+        return name == cls.PASSAGES_KEY and options.get(cls.INDEX_PATH) is not None
 
     def input_features(self, options: Options, feature_name: FeatureName) -> None:
         """Root feature: no input features."""
@@ -147,6 +165,39 @@ class BaseRetriever(FeatureGroup):
         ...
 
     @classmethod
+    def _to_passages(cls, results: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Convert a :meth:`_search` result into the canonical ranked-passage shape.
+
+        The shape is the retrieve connector family's contract:
+        ``[{doc_id, text, score, rank}]``, best first. FAISS distances are
+        lower-is-better, so ``score`` is ``1 / (1 + distance)``: positive,
+        monotone, and higher-is-more-relevant. Without metadata the ``doc_id``
+        falls back to the index position (mirroring the connector family's
+        positional fallback) and ``text`` to ``""``.
+        """
+        indices = results.get("indices", [])
+        distances = results.get("distances", [])
+        texts = results.get("texts", [])
+        doc_ids = results.get("doc_ids", [])
+
+        passages: List[Dict[str, Any]] = []
+        for rank, distance in enumerate(distances):
+            if rank < len(doc_ids):
+                doc_id = str(doc_ids[rank])
+            else:
+                doc_id = str(indices[rank]) if rank < len(indices) else str(rank)
+            text = str(texts[rank]) if rank < len(texts) else ""
+            passages.append(
+                {
+                    "doc_id": doc_id,
+                    "text": text,
+                    "score": 1.0 / (1.0 + float(distance)),
+                    "rank": rank,
+                }
+            )
+        return passages
+
+    @classmethod
     def calculate_feature(cls, data: Any, features: FeatureSet) -> List[Dict[str, Any]]:
         """Run retrieval: embed query if needed, search index, return results."""
         for feature in features.features:
@@ -172,6 +223,6 @@ class BaseRetriever(FeatureGroup):
             top_k = cls._get_top_k(options)
             results = cls._search(query_vector, top_k, options)
 
-            return [{"retrieved": results, **results}]
+            return [{"retrieved": results, **results, cls.PASSAGES_KEY: cls._to_passages(results)}]
 
         return []

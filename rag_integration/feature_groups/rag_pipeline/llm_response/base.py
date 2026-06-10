@@ -28,8 +28,15 @@ class BaseLLMResponse(FeatureGroup):
         - system_prompt: System prompt for the LLM (optional, has default)
         - llm_method: Which LLM implementation to use (discriminator)
 
-    Output rows contain: llm_response (the generated text)
+    Output rows contain: llm_response (the generated text) and the canonical
+    answer object under ANSWER_KEY (same shape as the generate connector
+    family), so a downstream feature is agnostic to which produced it.
     """
+
+    # Mirrors BaseGenerateConnector.ROOT_FEATURE_NAME (kept as a literal here so
+    # the stage layer does not import the connectors layer; the parity test
+    # asserts the two stay equal).
+    ANSWER_KEY = "generated_answer"
 
     QUERY = "query"
     CONTEXT = "context"
@@ -64,7 +71,7 @@ class BaseLLMResponse(FeatureGroup):
 
     @classmethod
     def input_data(cls) -> DataCreator:
-        return DataCreator({"llm_response"})
+        return DataCreator({"llm_response", cls.ANSWER_KEY})
 
     @classmethod
     def match_feature_group_criteria(
@@ -73,8 +80,18 @@ class BaseLLMResponse(FeatureGroup):
         options: Options,
         data_access_collection: Any = None,
     ) -> bool:
-        """Match features named 'llm_response' exactly."""
-        return feature_name == "llm_response"
+        """Match 'llm_response', or the canonical answer feature for stage options.
+
+        Serving ANSWER_KEY makes migration a pure option swap: a downstream
+        feature keeps requesting the same name whether a generate connector
+        (query_text + passages) or this stage (query + context) produces it.
+        The gate on the stage's defining option (query) keeps the two worlds
+        from both claiming one request.
+        """
+        name = str(feature_name)
+        if name == "llm_response":
+            return True
+        return name == cls.ANSWER_KEY and options.get(cls.QUERY) is not None
 
     def input_features(self, options: Options, feature_name: FeatureName) -> None:
         """Root feature: no input features."""
@@ -134,6 +151,10 @@ class BaseLLMResponse(FeatureGroup):
             system_prompt = cls._get_system_prompt(options)
 
             response = cls._generate(query, context, system_prompt, options)
-            return [{"llm_response": response}]
+            # The canonical answer object mirrors the generate connector
+            # family's shape. The stage has no doc_id-tracked passages, so the
+            # citation list is honestly empty rather than fabricated.
+            answer = {"answer": response, "citations": []}
+            return [{"llm_response": response, cls.ANSWER_KEY: answer}]
 
         return []
