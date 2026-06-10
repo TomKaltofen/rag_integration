@@ -247,13 +247,3 @@ tests/connectors/
     <family>_contract.py   inheritable contract-test suite
     test_<backend>.py      concrete adapter test
 ```
-
-## Open considerations
-
-- **graph_rag and the KG layer.** `graph_rag` retrieval could consume a
-  knowledge-graph connector as its corpus rather than carry its own graph
-  substrate.
-- **Hybrid as a backend vs a mixin.** Hybrid/RRF fusion sits inside `retrieve`
-  as a backend; if fusion needs to combine *across* families it may want a mixin.
-- **Dense `retrieve` anchor.** A no-Docker dense anchor (numpy brute-force or the
-  existing FAISS path) is not yet present.
