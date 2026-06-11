@@ -1,9 +1,11 @@
 """Cross-cutting property mixins shared by the connector-family bases.
 
-Each mixin hoists one concern PR #31 duplicated inline (top_k parsing, doc
-collection / doc_id bookkeeping, ranking validation). They are plain classes
-listed ahead of ``FeatureGroup`` in a base, so mloda discovery still sees only
-the ``FeatureGroup`` leaves; ``cls.__name__`` keeps messages naming the backend.
+Each mixin hoists one concern duplicated inline: option parsing (``OptionsMixin``),
+top_k cut-off (``TopKMixin``), doc collection / doc_id bookkeeping
+(``DocCollectionMixin``), ranking validation (``RankingValidationMixin``), and the
+one-query-per-run guard (``SingleQueryPerRunMixin``). They are plain classes listed
+ahead of ``FeatureGroup`` in a base, so mloda discovery still sees only the
+``FeatureGroup`` leaves; ``cls.__name__`` keeps messages naming the backend.
 """
 
 from __future__ import annotations
