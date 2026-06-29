@@ -223,20 +223,23 @@ both demonstrated end to end in
 [`cli/swap_demo.py`](../cli/swap_demo.py) (run `python -m cli.swap_demo`) and
 pinned by [`tests/connectors/test_swap_demo.py`](../tests/connectors/test_swap_demo.py).
 
-Every connector in the demo is driven through one helper:
+Every connector in the demo is driven through one helper, over one fixed set of
+enabled connectors (`CONNECTORS`):
 
 ```python
-def run_connector(root_feature, options, providers):
+def run_connector(root_feature, options):
     feature = Feature(root_feature, options=Options(context=options))
     result = mlodaAPI.run_all(
         [feature],
         compute_frameworks={PythonDictFramework},
-        plugin_collector=PluginCollector.enabled_feature_groups(providers),
+        plugin_collector=PluginCollector.enabled_feature_groups(CONNECTORS),
     )
     # ... return the single result row's value
 ```
 
-The call shape never changes between backends or families. What changes is data:
+Neither the enabled providers nor the call shape changes between backends or
+families. Only the options dict changes, and the `<family>_backend` selector in
+it routes the request to exactly one of the enabled connectors. What changes:
 
 - **Within a family**, only the `<family>_backend` selector value moves. The
   root feature name, the input keys, and the result shape are all unchanged, so
