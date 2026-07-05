@@ -37,6 +37,9 @@ follow-up once the harness exists. The reverse order is preferred.
   context option in `match_feature_group_criteria`; disjoint selector values,
   unknown value matches nothing (`test_unknown_backend_does_not_match` per
   family). New backends follow the repo's established context-option pattern.
+  The one naming exception is `graph_rag`, whose key is `graph_backend`, not
+  `graph_rag_backend` (see `connectors/README.md`); it matters only for the
+  blending demo below, which selects a `graph_rag` backend.
 - **Contract suites.** Each backend's test subclasses the family's inheritable
   suite in `tests/connectors/<family>/<family>_contract.py` and implements the
   handful of adapter methods (`connector_class`, `backend_value`, sample data).
@@ -86,7 +89,11 @@ The smallest step: it mirrors the existing FlashRank pattern one to one.
   `MockLLM` / `MockEmbedding`; rejected because mock output is prompt echo,
   which is a worse honest surface than top-document text.
 - **Extra:** new `llamaindex` extra. Zero model download under the recommended
-  cut, so its contract test runs in CI (pedigree `real-lib-inmem`).
+  cut, so its contract test runs in CI (pedigree `real-lib-inmem`). Verify in
+  the PR that constructing `SimpleKeywordTableIndex` does not resolve
+  `Settings.llm` (default OpenAI) or demand an API key: the recommended cut
+  makes no LLM or embedding call, but the "runs in CI" classification depends
+  on construction staying key-free.
 - **Narrowing row:** answer is the top retrieved node's text (no LLM
   synthesis); empty query / empty corpus / non-positive `top_k` yield an empty
   result, matching the Haystack lock.
@@ -121,10 +128,14 @@ placed in the prompt, and the free-form part is only the answer text.
   download size and local runtime). Chosen over Ollama because Ollama is a
   server daemon, which under the no-Docker / no-server policy would have to be
   a fixture stub rather than a real backend.
-- **Extra:** new `generate-llm` extra. Note: `llama-cpp-python` does not fetch
-  anything at `Llama(model_path=...)` construction; the backend must acquire
-  the GGUF via `Llama.from_pretrained(repo_id, filename)`, which downloads
-  from the Hugging Face Hub and caches locally. That gives the FlashRank
+- **Extra:** new `generate-llm` extra, `["llama-cpp-python>=0.2",
+  "huggingface-hub"]`. Note: `llama-cpp-python` does not fetch anything at
+  `Llama(model_path=...)` construction; the backend must acquire the GGUF via
+  `Llama.from_pretrained(repo_id, filename)`, which downloads from the Hugging
+  Face Hub and caches locally. `from_pretrained` imports `huggingface_hub`, and
+  `llama-cpp-python` does not depend on it (it works in this repo's venv only
+  because the `advanced` extra pulls it transitively via sentence-transformers),
+  so the extra must list `huggingface-hub` explicitly. That gives the FlashRank
   local-cache story: the contract test runs locally against the cache and is
   CI-skipped (`importorskip` + a new `requires_llama_cpp_model` marker);
   `ExtractiveResponder` remains the family's CI anchor.
@@ -179,8 +190,14 @@ blended in/out shape is no single family's contract.
   carry over for free: only-positive scores, deterministic ties, duplicate
   keys raise.
 - **Demo hook:** extend `cli/swap_demo.py` with a blending step that runs the
-  `retrieve` anchor and a `graph_rag` backend over the shared demo corpus and
-  fuses the two rankings; pinned by `tests/connectors/test_swap_demo.py`.
+  `retrieve` anchor and a `graph_rag` backend, then fuses the two rankings;
+  pinned by `tests/connectors/test_swap_demo.py`. Note the shapes differ:
+  `retrieve` consumes the flat `corpus`, but `graph_rag` consumes `nodes` +
+  `edges` (selector `graph_backend`), not `corpus`. The step therefore derives
+  a small demo graph from the same docs, `nodes=CORPUS` plus a handful of
+  `edges`, rather than reusing `SHARED_INPUTS` verbatim; the edges matter,
+  because with none the one-hop neighbour bonus never fires and the two
+  rankings collapse to near-duplicates, making the blend unconvincing.
 - **Tests:** `tests/connectors/test_fusion_blend.py` covering consensus beats
   single placement, determinism, top_k truncation, text resolution, duplicate
   `doc_id` inside one ranking raising, and empty-rankings behaviour.
@@ -194,7 +211,7 @@ blended in/out shape is no single family's contract.
 | `rerank-st` | `sentence-transformers>=2.2.0` | installed, tests CI-skipped on model download |
 | `llamaindex` | `llama-index-core>=0.10` | installed, tests run in CI (no download) |
 | `txtai` | `txtai>=7.0` | installed, tests run in CI if install weight acceptable, else local-only |
-| `generate-llm` | `llama-cpp-python>=0.2` | installed, tests CI-skipped on model download |
+| `generate-llm` | `llama-cpp-python>=0.2`, `huggingface-hub` | installed, tests CI-skipped on model download |
 | `colbert` (only if built) | `ragatouille` | local-only tests |
 
 Cross-family blending needs no new extra: `rrf_fuse` is stdlib-typed, and the
