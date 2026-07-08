@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Set, Type
+from typing import Any, Dict, List, Set, Type, Union
 
 from mloda.user import mlodaAPI, PluginCollector, Feature, Options
 from mloda.provider import FeatureGroup
@@ -17,6 +17,7 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
     PythonDictFramework,
 )
 
+from rag_integration.feature_groups.columnar import columnar_to_rows
 from rag_integration.feature_groups.rag_pipeline import (
     DictDocumentSource,
     FixedSizeChunker,
@@ -249,27 +250,32 @@ def cmd_run(args: argparse.Namespace) -> None:
     if args.verbose:
         print(f"  {MAGENTA}▶{RESET} Building pipeline: {' -> '.join(p.__name__ for p in providers)}")
 
-    # Run the pipeline via mlodaAPI
+    # Also request the deduped chunk feature: mloda 0.9.0 returns only the
+    # requested feature's column, so chunk text is not present on embedded rows.
+    chunk_feature = final_feature.options.get("in_features")
+    features: List[Union[Feature, str]] = [final_feature]
+    if isinstance(chunk_feature, Feature):
+        features.append(chunk_feature)
     raw_result = mlodaAPI.run_all(
-        features=[final_feature],
+        features=features,
         compute_frameworks={PythonDictFramework},
         plugin_collector=PluginCollector.enabled_feature_groups(providers),
     )
 
-    # Extract results - mlodaAPI returns list of results per feature
-    result_rows = raw_result[0] if raw_result else []
-    if result_rows and isinstance(result_rows[0], list):
-        result_rows = result_rows[0]
+    # mlodaAPI returns one columnar partition per requested feature; pick each by
+    # the column it carries rather than by request order.
+    partitions = [columnar_to_rows(partition) for partition in raw_result]
+    result_rows = next((rows for rows in partitions if rows and "result_embedded" in rows[0]), [])
+    chunk_rows = next((rows for rows in partitions if rows and "result_deduped" in rows[0]), [])
 
-    # Extract embeddings and chunks from the result
+    # Extract embeddings and the aligned chunk text (deduped rows map 1:1 to embeddings).
     embeddings = []
     unique_chunks = []
     for i, row in enumerate(result_rows):
         embedding = row.get("result_embedded")
         if embedding is not None:
             embeddings.append(embedding)
-            # Extract chunk text from the row if available
-            chunk_text = row.get("result_deduped") or row.get("result_chunked") or ""
+            chunk_text = chunk_rows[i].get("result_deduped", "") if i < len(chunk_rows) else ""
             unique_chunks.append(
                 {
                     "chunk_idx": i,

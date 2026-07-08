@@ -31,6 +31,7 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 )
 from mloda.provider import DefaultOptionKeys
 
+from rag_integration.feature_groups.columnar import columnar_to_rows
 from rag_integration.feature_groups.evaluation.metrics import mean_recall_at_k
 
 
@@ -89,6 +90,9 @@ class FaissRetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
                 "Install with: pip install faiss-cpu numpy"
             ) from e
 
+        # mloda 0.9.0 delivers columnar data; read it row-wise.
+        rows = columnar_to_rows(data)
+
         for feature in features.features:
             # source_feature = ...__indexed  (the FAISS indexing step output)
             source_feature = cls._extract_source_features(feature)[0]
@@ -99,8 +103,8 @@ class FaissRetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
             # vector_id under source_feature but does NOT overwrite the embedding.
             embedding_feature = source_feature.rsplit("__indexed", 1)[0]
 
-            corpus_rows = [r for r in data if r.get("row_type") == "corpus"]
-            query_rows = [r for r in data if r.get("row_type") == "query"]
+            corpus_rows = [r for r in rows if r.get("row_type") == "corpus"]
+            query_rows = [r for r in rows if r.get("row_type") == "query"]
 
             if not corpus_rows or not query_rows:
                 metrics: Dict[str, Any] = {
@@ -137,7 +141,8 @@ class FaissRetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
 
             for q_idx, q_row in enumerate(query_rows):
                 q_id = str(q_row.get("doc_id", q_idx))
-                relevant_ids = set(str(rid) for rid in q_row.get("relevant_doc_ids", []))
+                # `or []` guards the None that homogenize_rows backfills on absent keys.
+                relevant_ids = set(str(rid) for rid in q_row.get("relevant_doc_ids") or [])
                 query_relevant[q_id] = relevant_ids
 
                 # Map FAISS result indices → doc_ids (dedup while preserving order)
