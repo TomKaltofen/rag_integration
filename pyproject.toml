@@ -9,7 +9,7 @@ name = "rag-integration"
 description = "RAG integration plugin for mloda"
 readme = "README.md"
 license = {text = "Apache-2.0"}
-authors = [{ name = "mloda", email = "plugin-dev@mloda.ai" }]
+authors = [{ name = "Tom Kaltofen", email = "tomkaltofen@mloda.ai" }]
 requires-python = ">=3.10"
 keywords = ["mloda", "rag", "retrieval-augmented-generation", "llm", "embeddings", "vector-search", "feature-engineering"]
 classifiers = [
