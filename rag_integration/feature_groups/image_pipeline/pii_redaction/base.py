@@ -5,13 +5,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature, FeatureName, Options
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
 from mloda.provider import DefaultOptionKeys
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
@@ -73,25 +74,17 @@ class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
     }
 
     PREFIX_PATTERN = r".*__pii_redacted$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        IMAGE_REDACTION_METHOD: {
-            **REDACTION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        PII_REGIONS: {
-            "explanation": "List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to redact",
-            DefaultOptionKeys.context: True,
-        },
+        IMAGE_REDACTION_METHOD: property_spec(
+            "Image redaction method", allowed_values=REDACTION_METHODS, strict=True, deferred_binding=True
+        ),
+        PII_REGIONS: property_spec("List of PII region dicts with 'bbox' [x1,y1,x2,y2] and 'type'", default=[]),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to redact"),
     }
 
     @classmethod
@@ -168,6 +161,7 @@ class BaseImagePIIRedactor(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Perform PII redaction on images, processing row by row for memory efficiency."""
+        data = as_rows(data)
         for feature in features.features:
             cls._get_source_feature_name(feature)
             regions = cls._get_pii_regions(feature)

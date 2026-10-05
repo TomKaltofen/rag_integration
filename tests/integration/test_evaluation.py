@@ -106,7 +106,7 @@ class TestTextEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureTextDatasetSource, MockEmbedder, RetrievalEvaluator}
             ),
@@ -125,7 +125,7 @@ class TestTextEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureTextDatasetSource, MockEmbedder, RetrievalEvaluator}
             ),
@@ -142,7 +142,7 @@ class TestTextEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureTextDatasetSource, MockEmbedder, RetrievalEvaluator}
             ),
@@ -167,7 +167,7 @@ class TestImageEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureImageDatasetSource, MockImageEmbedder, RetrievalEvaluator}
             ),
@@ -186,7 +186,7 @@ class TestImageEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureImageDatasetSource, MockImageEmbedder, RetrievalEvaluator}
             ),
@@ -203,7 +203,7 @@ class TestImageEvaluationPipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {FixtureImageDatasetSource, MockImageEmbedder, RetrievalEvaluator}
             ),
@@ -265,7 +265,7 @@ class TestFaissEvaluationPipeline:
         feature = Feature(_FAISS_FEATURE, options=Options(options))
         raw_result = mlodaAPI.run_all(
             features=[feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(
                 {
                     FixtureFaissTextDatasetSource,

@@ -5,13 +5,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet
-from mloda.provider import FeatureChainParserMixin
+from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet, property_spec
+from mloda.provider import FeatureChainParserMixin, is_no_default
 from mloda.user import Feature, FeatureName, Options
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
 from mloda.provider import DefaultOptionKeys
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseImageEmbedder(FeatureChainParserMixin, FeatureGroup):
@@ -61,30 +62,18 @@ class BaseImageEmbedder(FeatureChainParserMixin, FeatureGroup):
     }
 
     PREFIX_PATTERN = r".*__embedded$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        IMAGE_EMBEDDING_METHOD: {
-            **EMBEDDING_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        MODEL_NAME: {
-            "explanation": "Name of the embedding model",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "default",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to embed",
-            DefaultOptionKeys.context: True,
-        },
+        IMAGE_EMBEDDING_METHOD: property_spec(
+            "Image embedding method", allowed_values=EMBEDDING_METHODS, strict=True, deferred_binding=True
+        ),
+        EMBEDDING_DIM: property_spec("Dimension of the embedding vectors", default=512),
+        MODEL_NAME: property_spec("Name of the embedding model", default="default"),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to embed"),
     }
 
     @classmethod
@@ -123,9 +112,10 @@ class BaseImageEmbedder(FeatureChainParserMixin, FeatureGroup):
         if name is not None:
             return str(name)
         # Check subclass PROPERTY_MAPPING for a provider-specific default
-        mapping = cls.PROPERTY_MAPPING.get(cls.MODEL_NAME, {})
-        default = mapping.get(DefaultOptionKeys.default, "default")
-        return str(default)
+        spec = (cls.PROPERTY_MAPPING or {}).get(cls.MODEL_NAME)
+        if spec is None or spec.default is None or is_no_default(spec.default):
+            return "default"
+        return str(spec.default)
 
     @staticmethod
     def artifact() -> Optional[Type[BaseArtifact]]:
@@ -156,6 +146,7 @@ class BaseImageEmbedder(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Generate embeddings for images, processing row by row for memory efficiency."""
+        data = as_rows(data)
         for feature in features.features:
             cls._get_source_feature_name(feature)
             embedding_dim = cls._get_embedding_dim(feature)

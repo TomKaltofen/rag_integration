@@ -14,8 +14,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mloda.provider import DefaultOptionKeys
 from mloda.user import mlodaAPI, Feature, FeatureName, Options, PluginCollector
+from mloda.user.python_dict import result_rows
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
@@ -58,14 +58,13 @@ def _run_chained(options: Options, connector: type[BaseGraphRagConnector] = Adja
     feature = Feature(connector.ROOT_FEATURE_NAME, options=options)
     result = mlodaAPI.run_all(
         [feature],
-        compute_frameworks={PythonDictFramework},
+        compute_frameworks=[PythonDictFramework],
         plugin_collector=PluginCollector.enabled_feature_groups({connector, TriplesKnowledgeGraph}),
     )
-    for partition in result:
-        for row in partition:
-            if connector.ROOT_FEATURE_NAME in row:
-                passages: List[Dict[str, Any]] = row[connector.ROOT_FEATURE_NAME]
-                return passages
+    for row in result_rows(result):
+        if connector.ROOT_FEATURE_NAME in row:
+            passages: List[Dict[str, Any]] = row[connector.ROOT_FEATURE_NAME]
+            return passages
     raise AssertionError(f"run_all returned no graph_passages row: {result!r}")
 
 
@@ -96,9 +95,9 @@ def test_graph_source_declares_input_feature_with_forwarded_context() -> None:
     assert feature.options.get(AdjacencyGraphRag.GRAPH_BACKEND) is None
     assert feature.options.get(AdjacencyGraphRag.GRAPH_SOURCE) is None
     assert feature.options.get(AdjacencyGraphRag.QUERY_TEXT) is None
-    # The family keys are merge-protected, so the engine's group-option merge
-    # cannot re-add query-specific keys to the source feature.
-    assert feature.options.get(DefaultOptionKeys.feature_chainer_parser_key) == AdjacencyGraphRag.FAMILY_OPTION_KEYS
+    # The family keys are excluded from forwarding, so the engine's group-option
+    # merge cannot re-add query-specific keys to the source feature.
+    assert feature.forward_group_exclude == AdjacencyGraphRag.FAMILY_OPTION_KEYS
 
 
 def test_graph_source_forwards_group_options_without_family_keys() -> None:
@@ -121,8 +120,14 @@ def test_graph_source_forwards_group_options_without_family_keys() -> None:
     [(AdjacencyGraphRag, "adjacency"), (NetworkxGraphRag, "networkx")],
     ids=["adjacency", "networkx"],
 )
-def test_chained_ranking_runs_over_kg_nodes(connector: type[BaseGraphRagConnector], backend: str) -> None:
-    passages = _run_chained(Options(context=_chained_context(backend=backend)), connector=connector)
+# Group placement exercises the engine's own group forwarding to the source feature.
+@pytest.mark.parametrize("placement", ["context", "group"])
+def test_chained_ranking_runs_over_kg_nodes(
+    connector: type[BaseGraphRagConnector], backend: str, placement: str
+) -> None:
+    context = _chained_context(backend=backend)
+    options = Options(group=context) if placement == "group" else Options(context=context)
+    passages = _run_chained(options, connector=connector)
     by_id = {p["doc_id"]: p["score"] for p in passages}
 
     # The query entity wins; its text carries two matching triple sentences.

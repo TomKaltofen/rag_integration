@@ -12,6 +12,7 @@ from typing import Any, Dict, List
 import pytest
 
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
+from mloda.user.python_dict import result_rows
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
@@ -141,19 +142,18 @@ def test_end_to_end_run_all() -> None:
     )
     result = mlodaAPI.run_all(
         [feature],
-        compute_frameworks={PythonDictFramework},
+        compute_frameworks=[PythonDictFramework],
         plugin_collector=PluginCollector.enabled_feature_groups({TriplesKnowledgeGraph}),
     )
-    for partition in result:
-        for row in partition:
-            if TriplesKnowledgeGraph.ROOT_FEATURE_NAME in row:
-                graph = row[TriplesKnowledgeGraph.ROOT_FEATURE_NAME]
-                assert [node["doc_id"] for node in graph["nodes"]] == [
-                    "chloroplast",
-                    "photosynthesis",
-                    "glucose",
-                    "mitochondria",
-                ]
-                assert len(graph["edges"]) == 3
-                return
+    for row in result_rows(result):
+        if TriplesKnowledgeGraph.ROOT_FEATURE_NAME in row:
+            graph = row[TriplesKnowledgeGraph.ROOT_FEATURE_NAME]
+            assert [node["doc_id"] for node in graph["nodes"]] == [
+                "chloroplast",
+                "photosynthesis",
+                "glucose",
+                "mitochondria",
+            ]
+            assert len(graph["edges"]) == 3
+            return
     raise AssertionError(f"run_all returned no knowledge_graph row: {result!r}")

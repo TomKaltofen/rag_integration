@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
@@ -14,6 +14,7 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 from mloda.provider import DefaultOptionKeys
 
 from rag_integration.feature_groups.rag_pipeline.vector_store.vector_store_artifact import VectorStoreArtifact
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseVectorStore(FeatureChainParserMixin, FeatureGroup):
@@ -42,20 +43,14 @@ class BaseVectorStore(FeatureChainParserMixin, FeatureGroup):
     }
 
     PREFIX_PATTERN = r".*__indexed$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        INDEX_METHOD: {
-            **INDEX_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing embedding vectors to index",
-            DefaultOptionKeys.context: True,
-        },
+        INDEX_METHOD: property_spec("Index method", allowed_values=INDEX_METHODS, strict=True, deferred_binding=True),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing embedding vectors to index"),
     }
 
     @classmethod
@@ -97,6 +92,7 @@ class BaseVectorStore(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Build FAISS index from embeddings, save via artifact, attach row metadata."""
+        data = as_rows(data)
         artifact_cls = cls.artifact()
 
         for feature in features.features:

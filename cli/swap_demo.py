@@ -39,6 +39,7 @@ from importlib.util import find_spec
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
 
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
+from mloda.user.python_dict import result_rows
 from mloda.provider import FeatureGroup
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -89,16 +90,11 @@ def run_connector(root_feature: str, options: Dict[str, Any]) -> Any:
     feature = Feature(root_feature, options=Options(context=dict(options)))
     result = mlodaAPI.run_all(
         [feature],
-        compute_frameworks={PythonDictFramework},
+        compute_frameworks=[PythonDictFramework],
         plugin_collector=PluginCollector.enabled_feature_groups(CONNECTORS),
     )
-    rows: List[Any] = list(result[0]) if result and isinstance(result[0], list) else list(result)
-    # Some frameworks nest one level deeper ([[{...}]]); unwrap to match the
-    # sibling demos (cli/rag_demo.py, cli/eval_demo.py).
-    if rows and isinstance(rows[0], list):
-        rows = rows[0]
-    for row in rows:
-        if isinstance(row, dict) and root_feature in row:
+    for row in result_rows(result):
+        if root_feature in row:
             return row[root_feature]
     raise AssertionError(f"run_all returned no '{root_feature}' row: {result!r}")
 

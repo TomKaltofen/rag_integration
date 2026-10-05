@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from mloda.user import Feature, FeatureName, Options
-from mloda.provider import DefaultOptionKeys
+from mloda.provider import DefaultOptionKeys, property_spec
 
 from rag_integration.feature_groups.deduplication_base import BaseRowDeduplicator
 
@@ -67,30 +67,18 @@ class BaseImageDeduplicator(BaseRowDeduplicator):
     KEEP_LARGEST_STRATEGY = "largest"
 
     PREFIX_PATTERN = r".*__deduped$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        IMAGE_DEDUPLICATION_METHOD: {
-            **DEDUPLICATION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1.0,
-        },
-        KEEP_STRATEGY: {
-            **KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
+        IMAGE_DEDUPLICATION_METHOD: property_spec(
+            "Image deduplication method", allowed_values=DEDUPLICATION_METHODS, strict=True, deferred_binding=True
+        ),
+        SIMILARITY_THRESHOLD: property_spec("Threshold for considering images as duplicates (0.0-1.0)", default=1.0),
+        KEEP_STRATEGY: property_spec("Keep strategy", allowed_values=KEEP_STRATEGIES, default="first"),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to deduplicate"),
     }
 
     @classmethod

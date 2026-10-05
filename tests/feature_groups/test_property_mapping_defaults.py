@@ -1,9 +1,7 @@
-"""Repo-wide invariant: every PROPERTY_MAPPING default must be an accepted value.
+"""Repo-wide invariant: every PROPERTY_MAPPING is a valid spec mapping whose defaults are accepted values.
 
-Upstream mloda will enforce this at class-definition time via
-``FeatureChainParser.validate_property_mapping_defaults`` in ``FeatureGroup.__init_subclass__``.
-Enforce it here first: delegate to that validator when the installed mloda has it,
-otherwise replicate it on the ``FeatureChainParser`` helpers present in 0.8.x.
+mloda rejects a bad strict default when the ``property_spec`` is built and a non-spec value at
+class definition; this sweep makes sure every feature_groups module is imported so none is skipped.
 """
 
 from __future__ import annotations
@@ -12,58 +10,16 @@ import importlib
 import pkgutil
 from typing import Any, Dict, List, Optional, Type
 
-from mloda.provider import DefaultOptionKeys, FeatureChainParser, FeatureGroup
+import pytest
+from mloda.provider import FeatureChainParser, FeatureGroup, property_spec
 
 import rag_integration.feature_groups
 
 
-def _validate_with_replica(owner_name: str, property_mapping: Optional[Dict[str, Any]]) -> List[str]:
-    """Replicate upstream validate_property_mapping_defaults; returns violation messages."""
-    violations: List[str] = []
-    if property_mapping is None:
-        return violations
-    for key, spec in property_mapping.items():
-        if not isinstance(spec, dict):
-            continue
-        if DefaultOptionKeys.default not in spec:
-            continue
-        default = spec[DefaultOptionKeys.default]
-        if default is None:
-            continue
-        validation_function = FeatureChainParser._get_validation_function(spec)
-        if validation_function is not None:
-            if not FeatureChainParser._is_strict_validation(spec):
-                continue
-            try:
-                verdict = validation_function(default)
-            except Exception as exc:
-                violations.append(
-                    f"{owner_name}.PROPERTY_MAPPING['{key}'] default {default!r}: validation_function raised {exc!r}"
-                )
-                continue
-            if not verdict:
-                violations.append(
-                    f"{owner_name}.PROPERTY_MAPPING['{key}'] default {default!r}: rejected by validation_function"
-                )
-            continue
-        accepted = FeatureChainParser._extract_property_values(spec)
-        try:
-            FeatureChainParser._validate_property_value(default, accepted, key, spec)
-        except (ValueError, TypeError):
-            violations.append(
-                f"{owner_name}.PROPERTY_MAPPING['{key}'] default {default!r}: "
-                f"not in accepted values {sorted(accepted, key=repr)}"
-            )
-    return violations
-
-
 def _validate(owner_name: str, property_mapping: Optional[Dict[str, Any]]) -> List[str]:
-    """Delegate to the upstream validator when available, else use the replica."""
-    upstream = getattr(FeatureChainParser, "validate_property_mapping_defaults", None)
-    if upstream is None:
-        return _validate_with_replica(owner_name, property_mapping)
+    """Run the upstream class-definition validator; returns violation messages."""
     try:
-        upstream(owner_name, property_mapping)
+        FeatureChainParser.validate_property_mapping_defaults(owner_name, property_mapping)
     except (ValueError, TypeError) as exc:
         return [str(exc)]
     return []
@@ -101,29 +57,34 @@ def _all_feature_groups() -> List[Type[FeatureGroup]]:
     return sorted(collected, key=lambda c: f"{c.__module__}.{c.__name__}")
 
 
-def test_validator_catches_bad_default() -> None:
-    """Guard against a vacuously green check: a default outside the accepted values must be flagged."""
-    bad_mapping: Dict[str, Any] = {
-        "mode": {
-            "fast": "fast mode",
-            "slow": "slow mode",
-            DefaultOptionKeys.default: "turbo",
-            DefaultOptionKeys.strict_validation: True,
-        }
-    }
-    assert _validate("DummyOwner", bad_mapping)
+def test_class_definition_rejects_bad_default() -> None:
+    """Guard against a vacuously green check: a default outside the accepted values must be rejected."""
+    with pytest.raises(ValueError, match="turbo"):
+
+        class _BadDefault(FeatureGroup):
+            PROPERTY_MAPPING = {
+                "mode": property_spec(
+                    "Mode", allowed_values={"fast": "fast mode", "slow": "slow mode"}, strict=True, default="turbo"
+                ),
+            }
 
 
-def test_validator_catches_default_rejected_by_validation_function() -> None:
-    bad_mapping: Dict[str, Any] = {
-        "size": {
-            "explanation": "positive size",
-            DefaultOptionKeys.default: -1,
-            DefaultOptionKeys.strict_validation: True,
-            DefaultOptionKeys.validation_function: lambda value: isinstance(value, int) and value > 0,
-        }
-    }
-    assert _validate("DummyOwner", bad_mapping)
+def test_class_definition_rejects_default_failing_element_validator() -> None:
+    with pytest.raises(ValueError, match="element_validator"):
+
+        class _BadValidatedDefault(FeatureGroup):
+            PROPERTY_MAPPING = {
+                "size": property_spec(
+                    "Positive size",
+                    strict=True,
+                    element_validator=lambda value: isinstance(value, int) and value > 0,
+                    default=-1,
+                ),
+            }
+
+
+def test_validator_catches_dict_spec() -> None:
+    assert _validate("DummyOwner", {"mode": {"explanation": "dict-form spec"}})
 
 
 def test_all_property_mapping_defaults_are_accepted_values() -> None:
@@ -136,4 +97,4 @@ def test_all_property_mapping_defaults_are_accepted_values() -> None:
         owner = f"{feature_group.__module__}.{feature_group.__name__}"
         violations.extend(_validate(owner, feature_group.PROPERTY_MAPPING))
 
-    assert not violations, "PROPERTY_MAPPING defaults outside accepted values:\n" + "\n".join(violations)
+    assert not violations, "PROPERTY_MAPPING violations:\n" + "\n".join(violations)

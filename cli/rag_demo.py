@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Set, Type
 
 from mloda.user import mlodaAPI, PluginCollector, Feature, Options
+from mloda.user.python_dict import result_rows
 from mloda.provider import FeatureGroup
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -252,19 +253,17 @@ def cmd_run(args: argparse.Namespace) -> None:
     # Run the pipeline via mlodaAPI
     raw_result = mlodaAPI.run_all(
         features=[final_feature],
-        compute_frameworks={PythonDictFramework},
+        compute_frameworks=[PythonDictFramework],
         plugin_collector=PluginCollector.enabled_feature_groups(providers),
     )
 
     # Extract results - mlodaAPI returns list of results per feature
-    result_rows = raw_result[0] if raw_result else []
-    if result_rows and isinstance(result_rows[0], list):
-        result_rows = result_rows[0]
+    rows = result_rows(raw_result[:1])
 
     # Extract embeddings and chunks from the result
     embeddings = []
     unique_chunks = []
-    for i, row in enumerate(result_rows):
+    for i, row in enumerate(rows):
         embedding = row.get("result_embedded")
         if embedding is not None:
             embeddings.append(embedding)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Dict, List, Optional
 
-from mloda.provider import DefaultOptionKeys
+from mloda.provider import DefaultOptionKeys, property_spec
 
 from rag_integration.feature_groups.image_pipeline.deduplication.base import BaseImageDeduplicator
 
@@ -22,25 +22,19 @@ class ExactHashImageDeduplicator(BaseImageDeduplicator):
     """
 
     PROPERTY_MAPPING = {
-        BaseImageDeduplicator.IMAGE_DEDUPLICATION_METHOD: {
-            "exact_hash": "MD5 hash-based exact duplicate detection",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseImageDeduplicator.SIMILARITY_THRESHOLD: {
-            "explanation": "Threshold for considering images as duplicates (0.0-1.0)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 1.0,
-        },
-        BaseImageDeduplicator.KEEP_STRATEGY: {
-            **BaseImageDeduplicator.KEEP_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "first",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to deduplicate",
-            DefaultOptionKeys.context: True,
-        },
+        BaseImageDeduplicator.IMAGE_DEDUPLICATION_METHOD: property_spec(
+            "Image deduplication method",
+            allowed_values={"exact_hash": "MD5 hash-based exact duplicate detection"},
+            strict=True,
+            deferred_binding=True,
+        ),
+        BaseImageDeduplicator.SIMILARITY_THRESHOLD: property_spec(
+            "Threshold for considering images as duplicates (0.0-1.0)", default=1.0
+        ),
+        BaseImageDeduplicator.KEEP_STRATEGY: property_spec(
+            "Keep strategy", allowed_values=BaseImageDeduplicator.KEEP_STRATEGIES, default="first"
+        ),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to deduplicate"),
     }
 
     @classmethod

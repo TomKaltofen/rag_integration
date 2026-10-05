@@ -95,7 +95,7 @@ class TestFullPipelineIntegration:
 
         raw_result = mlodaAPI.run_all(
             features=list(feature_names),
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(get_test_providers()),
         )
 
@@ -215,7 +215,7 @@ class TestAlternativeProviders:
 
         raw_result = mlodaAPI.run_all(
             features=features,
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(all_providers),
         )
 
@@ -270,7 +270,7 @@ class TestEmbeddingArtifactIntegration:
             )
 
             api1 = mloda(
-                [feature1], {PythonDictFramework}, plugin_collector=PluginCollector.enabled_feature_groups(providers)
+                [feature1], [PythonDictFramework], plugin_collector=PluginCollector.enabled_feature_groups(providers)
             )
             api1._batch_run()
             results1 = api1.get_result()
@@ -298,7 +298,7 @@ class TestEmbeddingArtifactIntegration:
             )
 
             api2 = mloda(
-                [feature2], {PythonDictFramework}, plugin_collector=PluginCollector.enabled_feature_groups(providers)
+                [feature2], [PythonDictFramework], plugin_collector=PluginCollector.enabled_feature_groups(providers)
             )
             api2._batch_run()
             results2 = api2.get_result()

@@ -5,13 +5,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
 from mloda.provider import DefaultOptionKeys
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
@@ -94,30 +95,20 @@ class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
 
     # Pattern for feature chain parsing
     PREFIX_PATTERN = r".*__pii_redacted$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        REDACTION_METHOD: {
-            **REDACTION_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        PII_TYPES: {
-            "explanation": "List of PII types to redact (EMAIL, PHONE, SSN, NAME, ALL)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: ["ALL"],
-        },
-        REPLACEMENT_STRATEGY: {
-            **REPLACEMENT_STRATEGIES,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "mask",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to redact",
-            DefaultOptionKeys.context: True,
-        },
+        REDACTION_METHOD: property_spec(
+            "Redaction method", allowed_values=REDACTION_METHODS, strict=True, deferred_binding=True
+        ),
+        PII_TYPES: property_spec("List of PII types to redact (EMAIL, PHONE, SSN, NAME, ALL)", default=["ALL"]),
+        REPLACEMENT_STRATEGY: property_spec(
+            "Replacement strategy", allowed_values=REPLACEMENT_STRATEGIES, default="mask"
+        ),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing text to redact"),
     }
 
     @classmethod
@@ -185,6 +176,7 @@ class BasePIIRedactor(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Perform PII redaction on the source feature."""
+        data = as_rows(data)
         for feature in features.features:
             source_feature = cls._get_source_feature_name(feature)
 

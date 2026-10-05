@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Set, Type
 
 from mloda.provider import DataCreator, FeatureGroup
+from mloda.user.python_dict import result_rows
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
@@ -12,9 +13,7 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 
 def flatten_result(result: Any) -> List[Dict[str, Any]]:
     """Unwrap nested mlodaAPI result to a flat list of dicts."""
-    if result and isinstance(result[0], list):
-        return result[0]
-    return list(result)
+    return result_rows(result)
 
 
 def get_results_by_feature(raw_result: List[Any], feature_names: List[str]) -> Dict[str, List[Dict[str, Any]]]:

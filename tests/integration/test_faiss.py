@@ -83,7 +83,7 @@ class TestVectorStorePipeline:
 
         raw_result = mlodaAPI.run_all(
             features=[feature_name],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups(get_test_providers()),
         )
 
@@ -106,7 +106,7 @@ class TestVectorStorePipeline:
 
             raw_result = mlodaAPI.run_all(
                 features=[feature],
-                compute_frameworks={PythonDictFramework},
+                compute_frameworks=[PythonDictFramework],
                 plugin_collector=PluginCollector.enabled_feature_groups(get_test_providers()),
             )
 
@@ -182,7 +182,7 @@ class TestVectorStoreArtifactPersistence:
 
             api1 = mloda(
                 [feature1],
-                {PythonDictFramework},
+                [PythonDictFramework],
                 plugin_collector=PluginCollector.enabled_feature_groups(providers),
             )
             api1._batch_run()
@@ -204,7 +204,7 @@ class TestVectorStoreArtifactPersistence:
 
             api2 = mloda(
                 [feature2],
-                {PythonDictFramework},
+                [PythonDictFramework],
                 plugin_collector=PluginCollector.enabled_feature_groups(providers),
             )
             api2._batch_run()
@@ -238,7 +238,7 @@ class TestIndexAndRetrieve:
 
             ingestion_result = mlodaAPI.run_all(
                 features=[ingestion_feature],
-                compute_frameworks={PythonDictFramework},
+                compute_frameworks=[PythonDictFramework],
                 plugin_collector=PluginCollector.enabled_feature_groups(get_test_providers()),
             )
 
@@ -277,7 +277,7 @@ class TestIndexAndRetrieve:
 
             retrieval_result = mlodaAPI.run_all(
                 features=[retrieval_feature],
-                compute_frameworks={PythonDictFramework},
+                compute_frameworks=[PythonDictFramework],
                 plugin_collector=PluginCollector.enabled_feature_groups({FaissRetriever}),
             )
 

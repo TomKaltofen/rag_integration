@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
@@ -16,6 +16,7 @@ from mloda_plugins.compute_framework.base_implementations.python_dict.python_dic
 from mloda.provider import DefaultOptionKeys
 
 from rag_integration.feature_groups.evaluation.metrics import mean_recall_at_k
+from rag_integration.feature_groups.rows import as_rows
 
 
 class RetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
@@ -51,14 +52,12 @@ class RetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
     """
 
     PREFIX_PATTERN = r".*__evaluated$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing embedded corpus + query rows",
-            DefaultOptionKeys.context: True,
-        },
+        DefaultOptionKeys.in_features: property_spec("Source feature containing embedded corpus + query rows"),
     }
 
     @classmethod
@@ -68,6 +67,7 @@ class RetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Compute Recall@K over the embedded corpus and query rows."""
+        data = as_rows(data)
         try:
             import numpy as np
         except ImportError as e:
@@ -109,7 +109,7 @@ class RetrievalEvaluator(FeatureChainParserMixin, FeatureGroup):
 
             for q_idx, q_row in enumerate(query_rows):
                 q_id = cls._get_id(q_row)
-                relevant_ids = set(q_row.get("relevant_doc_ids", []) + q_row.get("relevant_image_ids", []))
+                relevant_ids = set((q_row.get("relevant_doc_ids") or []) + (q_row.get("relevant_image_ids") or []))
                 query_relevant[q_id] = relevant_ids
 
                 ranked_indices = np.argsort(-sims[q_idx]).tolist()

@@ -22,6 +22,7 @@ from mloda.user import Feature
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseRowDeduplicator(FeatureChainParserMixin, FeatureGroup):
@@ -94,6 +95,7 @@ class BaseRowDeduplicator(FeatureChainParserMixin, FeatureGroup):
         identical entries collapse by name. ``features.features`` is a set, so silently picking
         "the first" of genuinely distinct features would also be non-deterministic; raise instead.
         """
+        data = as_rows(data)
         features_by_name = {feature.name: feature for feature in features.features}
         if not features_by_name:
             return data

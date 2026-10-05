@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type
 
 from mloda.user import mlodaAPI, Feature, Options, PluginCollector
+from mloda.user.python_dict import result_rows
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
@@ -70,14 +71,13 @@ class RerankConnectorContractBase(ABC):
         )
         result = mlodaAPI.run_all(
             [feature],
-            compute_frameworks={PythonDictFramework},
+            compute_frameworks=[PythonDictFramework],
             plugin_collector=PluginCollector.enabled_feature_groups({connector}),
         )
-        for partition in result:
-            for row in partition:
-                if connector.ROOT_FEATURE_NAME in row:
-                    passages: List[Dict[str, Any]] = row[connector.ROOT_FEATURE_NAME]
-                    return passages
+        for row in result_rows(result):
+            if connector.ROOT_FEATURE_NAME in row:
+                passages: List[Dict[str, Any]] = row[connector.ROOT_FEATURE_NAME]
+                return passages
         raise AssertionError(f"run_all returned no '{connector.ROOT_FEATURE_NAME}' row: {result!r}")
 
     # -- Matching / honest surface --------------------------------------------

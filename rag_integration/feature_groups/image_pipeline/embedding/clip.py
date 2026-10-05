@@ -13,10 +13,11 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
-from mloda.provider import FeatureSet
+from mloda.provider import FeatureSet, property_spec
 from mloda.provider import DefaultOptionKeys
 
 from rag_integration.feature_groups.image_pipeline.embedding.base import BaseImageEmbedder
+from rag_integration.feature_groups.rows import as_rows
 
 # Default local model path: looks two levels above the git repo root (mloda/models/)
 # clip.py lives at rag_integration/rag_integration/feature_groups/image_pipeline/embedding/clip.py
@@ -45,25 +46,17 @@ class CLIPImageEmbedder(BaseImageEmbedder):
     _model_cache: dict[str, Any] = {}
 
     PROPERTY_MAPPING = {
-        BaseImageEmbedder.IMAGE_EMBEDDING_METHOD: {
-            "clip": "CLIP model image embeddings",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        BaseImageEmbedder.EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors (CLIP default: 512)",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 512,
-        },
-        BaseImageEmbedder.MODEL_NAME: {
-            "explanation": "Local path or HuggingFace model ID",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: _HF_MODEL_ID,
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to embed",
-            DefaultOptionKeys.context: True,
-        },
+        BaseImageEmbedder.IMAGE_EMBEDDING_METHOD: property_spec(
+            "Image embedding method",
+            allowed_values={"clip": "CLIP model image embeddings"},
+            strict=True,
+            deferred_binding=True,
+        ),
+        BaseImageEmbedder.EMBEDDING_DIM: property_spec(
+            "Dimension of the embedding vectors (CLIP default: 512)", default=512
+        ),
+        BaseImageEmbedder.MODEL_NAME: property_spec("Local path or HuggingFace model ID", default=_HF_MODEL_ID),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to embed"),
     }
 
     @classmethod
@@ -200,6 +193,7 @@ class CLIPImageEmbedder(BaseImageEmbedder):
 
         This cross-modal dispatch is what makes text-to-image Recall@K meaningful.
         """
+        data = as_rows(data)
         for feature in features.features:
             embedding_dim = cls._get_embedding_dim(feature)
             model_name = cls._get_model_name(feature)

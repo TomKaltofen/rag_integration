@@ -5,13 +5,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature, FeatureName, Options
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
 from mloda.provider import DefaultOptionKeys
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseImagePreprocessor(FeatureChainParserMixin, FeatureGroup):
@@ -61,25 +62,17 @@ class BaseImagePreprocessor(FeatureChainParserMixin, FeatureGroup):
     }
 
     PREFIX_PATTERN = r".*__preprocessed$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        PREPROCESSING_METHOD: {
-            **PREPROCESSING_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        TARGET_SIZE: {
-            "explanation": "Target size as [width, height] in pixels",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: [224, 224],
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing images to preprocess",
-            DefaultOptionKeys.context: True,
-        },
+        PREPROCESSING_METHOD: property_spec(
+            "Preprocessing method", allowed_values=PREPROCESSING_METHODS, strict=True, deferred_binding=True
+        ),
+        TARGET_SIZE: property_spec("Target size as [width, height] in pixels", default=[224, 224]),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing images to preprocess"),
     }
 
     @classmethod
@@ -139,6 +132,7 @@ class BaseImagePreprocessor(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Preprocess images row by row for memory efficiency."""
+        data = as_rows(data)
         for feature in features.features:
             cls._get_source_feature_name(feature)
             target_size = cls._get_target_size(feature)

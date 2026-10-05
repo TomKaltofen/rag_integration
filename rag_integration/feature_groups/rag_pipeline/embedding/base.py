@@ -5,13 +5,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type
 
-from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet
+from mloda.provider import BaseArtifact, FeatureGroup, ComputeFramework, FeatureSet, property_spec
 from mloda.provider import FeatureChainParserMixin
 from mloda.user import Feature
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
     PythonDictFramework,
 )
 from mloda.provider import DefaultOptionKeys
+from rag_integration.feature_groups.rows import as_rows
 
 
 class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
@@ -60,30 +61,18 @@ class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
     }
 
     PREFIX_PATTERN = r".*__embedded$"
+    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1
 
     PROPERTY_MAPPING = {
-        EMBEDDING_METHOD: {
-            **EMBEDDING_METHODS,
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.strict_validation: True,
-        },
-        EMBEDDING_DIM: {
-            "explanation": "Dimension of the embedding vectors",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: 384,
-        },
-        MODEL_NAME: {
-            "explanation": "Name of the embedding model",
-            DefaultOptionKeys.context: True,
-            DefaultOptionKeys.default: "default",
-        },
-        DefaultOptionKeys.in_features: {
-            "explanation": "Source feature containing text to embed",
-            DefaultOptionKeys.context: True,
-        },
+        EMBEDDING_METHOD: property_spec(
+            "Embedding method", allowed_values=EMBEDDING_METHODS, strict=True, deferred_binding=True
+        ),
+        EMBEDDING_DIM: property_spec("Dimension of the embedding vectors", default=384),
+        MODEL_NAME: property_spec("Name of the embedding model", default="default"),
+        DefaultOptionKeys.in_features: property_spec("Source feature containing text to embed"),
     }
 
     @classmethod
@@ -142,6 +131,7 @@ class BaseEmbedder(FeatureChainParserMixin, FeatureGroup):
     @classmethod
     def calculate_feature(cls, data: List[Dict[str, Any]], features: FeatureSet) -> List[Dict[str, Any]]:
         """Generate embeddings for the source feature, with optional artifact support."""
+        data = as_rows(data)
         artifact_cls = cls.artifact()
 
         for feature in features.features:

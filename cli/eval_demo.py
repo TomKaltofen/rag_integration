@@ -43,6 +43,7 @@ import argparse
 from typing import Dict, List, Set, Tuple
 
 from mloda.user import Options
+from mloda.user.python_dict import result_rows
 
 from rag_integration.feature_groups.datasets.text.scifact import ScifactDatasetSource
 from rag_integration.feature_groups.datasets.image.flickr30k import Flickr30kDatasetSource
@@ -80,7 +81,7 @@ def _cosine_sim_rankings(
 
     for q_idx, q_row in enumerate(query_rows):
         q_id = query_ids[q_idx]
-        query_relevant[q_id] = set(q_row.get("relevant_doc_ids", []) + q_row.get("relevant_image_ids", []))
+        query_relevant[q_id] = set((q_row.get("relevant_doc_ids") or []) + (q_row.get("relevant_image_ids") or []))
         ranked_indices = (-sims[q_idx]).argsort().tolist()
         query_ranked[q_id] = [corpus_ids[i] for i in ranked_indices]
 
@@ -225,7 +226,7 @@ def run_faiss_eval(data_dir: str, embedder_name: str) -> None:
 
     raw_result = mlodaAPI.run_all(
         features=[feature],
-        compute_frameworks={PythonDictFramework},
+        compute_frameworks=[PythonDictFramework],
         plugin_collector=PluginCollector.enabled_feature_groups(
             {
                 ScifactDatasetSource,
@@ -238,10 +239,7 @@ def run_faiss_eval(data_dir: str, embedder_name: str) -> None:
         ),
     )
 
-    rows = raw_result[0] if raw_result else []
-    if rows and isinstance(rows[0], list):
-        rows = rows[0]
-
+    rows = result_rows(raw_result[:1])
     row = rows[0] if rows else {}
     metrics = row.get(feature_name, row)
 
