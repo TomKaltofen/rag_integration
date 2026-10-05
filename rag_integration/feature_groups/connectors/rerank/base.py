@@ -70,8 +70,8 @@ class BaseRerankConnector(
     # across backends; empty on the base so it never matches.
     RERANK_BACKENDS: Dict[str, str] = {}
 
-    # Declarative option documentation only; selection is via
-    # ``match_feature_group_criteria`` (not the FeatureChainParser).
+    # Selection is via ``match_feature_group_criteria``; only the backend selector is
+    # required, the other keys are optional here and validated in code.
     PROPERTY_MAPPING = {
         RERANK_BACKEND: property_spec("Which rerank-connector backend to use", context=False),
         QUERY_TEXT: property_spec("Query the candidates are reranked against", context=False, default=None),

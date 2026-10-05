@@ -1,6 +1,7 @@
 """Tests for DictImageSource."""
 
 from typing import Type
+from unittest.mock import MagicMock
 
 import pytest
 from mloda.user import Options
@@ -58,3 +59,12 @@ class TestDictImageSource(ImageSourceTestBase):
         result = DictImageSource._load_images(Options(context={"images": images}))
         assert result[0]["camera"] == "Canon"
         assert result[0]["tags"] == ["nature"]
+
+    def test_calculate_feature_aligns_metadata_keys(self) -> None:
+        """Rows with different extra fields share one key set, as PythonDict requires."""
+        images = [{"image_id": "1", "image_data": b"a", "camera": "Canon"}, {"image_id": "2", "image_data": b"b"}]
+        features = MagicMock()
+        features.features = [MagicMock(options=Options(context={"images": images}))]
+        rows = DictImageSource.calculate_feature(None, features)
+        assert [row["camera"] for row in rows] == ["Canon", None]
+        assert len({frozenset(row) for row in rows}) == 1

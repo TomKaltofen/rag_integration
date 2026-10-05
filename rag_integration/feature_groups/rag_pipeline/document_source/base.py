@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
+from mloda.user.python_dict import homogenize_rows
 from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
 from mloda.user import Options, FeatureName
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
@@ -65,6 +66,6 @@ class BaseDocumentSource(FeatureGroup):
     def calculate_feature(cls, data: Any, features: FeatureSet) -> List[Dict[str, Any]]:
         """Load and return documents."""
         for feature in features.features:
-            documents = cls._load_documents(feature.options)
-            return documents
+            # Items may carry different extra fields; PythonDict needs one key set.
+            return homogenize_rows(cls._load_documents(feature.options))
         return []

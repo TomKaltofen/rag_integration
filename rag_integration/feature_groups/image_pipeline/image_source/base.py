@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Set, Type, Union
 
+from mloda.user.python_dict import homogenize_rows
 from mloda.provider import FeatureGroup, ComputeFramework, FeatureSet
 from mloda.user import Options, FeatureName
 from mloda_plugins.compute_framework.base_implementations.python_dict.python_dict_framework import (
@@ -68,6 +69,6 @@ class BaseImageSource(FeatureGroup):
     def calculate_feature(cls, data: Any, features: FeatureSet) -> List[Dict[str, Any]]:
         """Load and return images."""
         for feature in features.features:
-            images = cls._load_images(feature.options)
-            return images
+            # Items may carry different extra fields; PythonDict needs one key set.
+            return homogenize_rows(cls._load_images(feature.options))
         return []

@@ -57,7 +57,7 @@ def _all_feature_groups() -> List[Type[FeatureGroup]]:
     return sorted(collected, key=lambda c: f"{c.__module__}.{c.__name__}")
 
 
-def test_class_definition_rejects_bad_default() -> None:
+def test_spec_rejects_default_outside_allowed_values() -> None:
     """Guard against a vacuously green check: a default outside the accepted values must be rejected."""
     with pytest.raises(ValueError, match="turbo"):
 
@@ -69,7 +69,7 @@ def test_class_definition_rejects_bad_default() -> None:
             }
 
 
-def test_class_definition_rejects_default_failing_element_validator() -> None:
+def test_spec_rejects_default_failing_element_validator() -> None:
     with pytest.raises(ValueError, match="element_validator"):
 
         class _BadValidatedDefault(FeatureGroup):

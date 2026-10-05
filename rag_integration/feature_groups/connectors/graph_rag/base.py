@@ -80,8 +80,8 @@ class BaseGraphRagConnector(
     # Filled per concrete; empty on the base so it never matches.
     GRAPH_BACKENDS: Dict[str, str] = {}
 
-    # Declarative option documentation only; selection is via
-    # ``match_feature_group_criteria`` (not the FeatureChainParser).
+    # Selection is via ``match_feature_group_criteria``; only the backend selector is
+    # required, the other keys are optional here and validated in code.
     PROPERTY_MAPPING = {
         GRAPH_BACKEND: property_spec("Which graph-RAG backend to use", context=False),
         QUERY_TEXT: property_spec("Raw text query to search the graph", context=False, default=None),

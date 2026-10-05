@@ -57,8 +57,8 @@ class BaseGenerateConnector(SingleQueryPerRunMixin, OptionsMixin, DocCollectionM
     # Filled per concrete; empty on the base so it never matches.
     GENERATE_BACKENDS: Dict[str, str] = {}
 
-    # Declarative option documentation only; selection is via
-    # ``match_feature_group_criteria`` (not the FeatureChainParser).
+    # Selection is via ``match_feature_group_criteria``; only the backend selector is
+    # required, the other keys are optional here and validated in code.
     PROPERTY_MAPPING = {
         GENERATE_BACKEND: property_spec("Which generate-connector backend to use", context=False),
         QUERY_TEXT: property_spec("The question to answer", context=False, default=None),

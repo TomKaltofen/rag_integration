@@ -67,7 +67,7 @@ class BaseImageDeduplicator(BaseRowDeduplicator):
     KEEP_LARGEST_STRATEGY = "largest"
 
     PREFIX_PATTERN = r".*__deduped$"
-    RECOGNITION_ONLY_PATTERN = True  # every mapping value comes from Options
+    RECOGNITION_ONLY_PATTERN = True  # no name capture: options come from Options, in_features from the name prefix
 
     MIN_IN_FEATURES = 1
     MAX_IN_FEATURES = 1

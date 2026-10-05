@@ -78,11 +78,8 @@ class BaseRetrieveConnector(
     # backends (see the class docstring).
     RETRIEVE_BACKENDS: Dict[str, str] = {}
 
-    # Declarative option documentation only. These root connector groups select
-    # by ``match_feature_group_criteria`` (not the FeatureChainParser), so the
-    # ``context``/``default``/``strict_validation`` flags that the parser would
-    # consume are intentionally omitted here; defaulting and validation live in
-    # the code below (``_get_top_k``) and in ``match_feature_group_criteria``.
+    # Selection is via ``match_feature_group_criteria``; only the backend selector is
+    # required, the other keys are optional here and validated in code.
     PROPERTY_MAPPING = {
         RETRIEVE_BACKEND: property_spec("Which retrieve-connector backend to use", context=False),
         QUERY_TEXT: property_spec("Raw text query to search the corpus", context=False, default=None),

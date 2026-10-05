@@ -28,8 +28,7 @@ class Bm25sRetriever(BaseRetrieveConnector):
         "bm25s": "BM25 lexical retrieval (bm25s)",
     }
 
-    # Declarative option documentation; selection is via
-    # ``match_feature_group_criteria`` (see BaseRetrieveConnector). The allowed
+    # Selection is via ``match_feature_group_criteria`` (see BaseRetrieveConnector). The allowed
     # backend value is the single key of RETRIEVE_BACKENDS above.
     PROPERTY_MAPPING = {
         BaseRetrieveConnector.RETRIEVE_BACKEND: property_spec("Use 'bm25s' for BM25 lexical retrieval", context=False),

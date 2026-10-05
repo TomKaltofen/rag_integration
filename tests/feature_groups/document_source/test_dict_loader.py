@@ -1,6 +1,7 @@
 """Tests for DictDocumentSource."""
 
 from typing import Type
+from unittest.mock import MagicMock
 
 import pytest
 from mloda.user import Options
@@ -58,3 +59,12 @@ class TestDictDocumentSource(DocumentSourceTestBase):
         docs = DictDocumentSource._load_documents(Options(context={"documents": documents}))
         assert docs[0]["author"] == "Bob"
         assert docs[0]["category"] == "test"
+
+    def test_calculate_feature_aligns_metadata_keys(self) -> None:
+        """Rows with different extra fields share one key set, as PythonDict requires."""
+        documents = [{"doc_id": "1", "text": "Hello", "author": "Bob"}, {"doc_id": "2", "text": "Hi"}]
+        features = MagicMock()
+        features.features = [MagicMock(options=Options(context={"documents": documents}))]
+        rows = DictDocumentSource.calculate_feature(None, features)
+        assert [row["author"] for row in rows] == ["Bob", None]
+        assert len({frozenset(row) for row in rows}) == 1

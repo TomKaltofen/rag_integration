@@ -19,10 +19,16 @@ def flatten_result(result: Any) -> List[Dict[str, Any]]:
 def get_results_by_feature(raw_result: List[Any], feature_names: List[str]) -> Dict[str, List[Dict[str, Any]]]:
     """Map mlodaAPI results to feature names.
 
-    mlodaAPI.run_all() returns a list where each element corresponds to each requested feature.
+    run_all() returns one partition per requested feature, in plan order, so match partitions by column name.
     This helper creates a dict mapping feature_name -> result_rows.
     """
-    return {name: flatten_result([raw_result[i]]) for i, name in enumerate(feature_names)}
+    partitions = [flatten_result([partition]) for partition in raw_result]
+    mapped: Dict[str, List[Dict[str, Any]]] = {}
+    for name in feature_names:
+        matches = [rows for rows in partitions if rows and name in rows[0]]
+        assert len(matches) == 1, f"expected one result partition with column '{name}', found {len(matches)}"
+        mapped[name] = matches[0]
+    return mapped
 
 
 def get_metrics(raw_result: Any, feature_name: str) -> Dict[str, Any]:
